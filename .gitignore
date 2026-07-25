@@ -1,0 +1,9 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/DHWifiClientSol/.vs/DHWifiClientSol
+/DHWifiClientSol/lib/DHWifiClient.NET/bin
+/DHWifiClientSol/lib/DHWifiClient.NET/obj
+/DHWifiClientSol/output
+/DHWifiClientSol/sample/DHWifiClientSample/obj
