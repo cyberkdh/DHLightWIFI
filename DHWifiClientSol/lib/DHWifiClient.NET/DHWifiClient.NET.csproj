@@ -41,11 +41,29 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Class1.cs" />
+    <Compile Include="WifiAuthentication.cs" />
+    <Compile Include="WifiCipher.cs" />
+    <Compile Include="WifiCipherAlgorithm.cs" />
+    <Compile Include="WifiClient.cs" />
+    <Compile Include="WifiException.cs" />
+    <Compile Include="WifiInterface.cs" />
+    <Compile Include="WifiInterfaceState.cs" />
+    <Compile Include="WifiNetwork.cs" />
+    <Compile Include="WifiNotificationEventArgs.cs" />
+    <Compile Include="WifiNotificationType.cs" />
+    <Compile Include="WifiProfileInfo.cs" />
+    <Compile Include="WifiPskProtocol.cs" />
+    <Compile Include="WifiRadioState.cs" />
+    <Compile Include="WifiWepAuthentication.cs" />
+    <Compile Include="log\FileLogWriter.cs" />
+    <Compile Include="log\ILogWriter.cs" />
+    <Compile Include="log\LogLevel.cs" />
+    <Compile Include="log\Logger.cs" />
+    <Compile Include="win32\WlanEnums.cs" />
+    <Compile Include="win32\WlanNativeMethods.cs" />
+    <Compile Include="win32\WlanProfileXml.cs" />
+    <Compile Include="win32\WlanStructures.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="win32\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
