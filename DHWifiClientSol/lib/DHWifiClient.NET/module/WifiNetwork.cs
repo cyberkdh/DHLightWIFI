@@ -5,7 +5,9 @@
 //	History			:
 //	Copyrights		: Copyright (C)CYBERKDH@HOTMAIL.COM. All Rights Reserved.
 //////////////////////////////////////////////////////////////////////////////////////////////////
-namespace DHWifiClient.NET
+using System.Collections.Generic;
+
+namespace DHWifiClient.NET.module
 {
     public class WifiNetwork
     {
@@ -19,6 +21,15 @@ namespace DHWifiClient.NET
 
         /// <summary>Signal quality, ranging from 0 to 100.</summary>
         public uint SignalQuality { get; internal set; }
+
+        /// <summary>
+        /// BSSID(s) (access point MAC addresses, e.g. "AA:BB:CC:DD:EE:FF") of the physical BSS(es) this
+        /// entry represents. Best-effort: populated via a separate WlanGetNetworkBssList query, so it may
+        /// be empty if that query fails. Since SSID text alone cannot tell apart multiple physical APs
+        /// sharing the same name (or, for hidden networks, an empty name), this is the field to use for
+        /// that purpose.
+        /// </summary>
+        public IReadOnlyList<string> Bssids { get; internal set; } = System.Array.Empty<string>();
 
         public override string ToString() => Ssid;
     }

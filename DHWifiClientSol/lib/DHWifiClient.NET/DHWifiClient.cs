@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //	Projects		: DHWifiClient
 //	Author			: CYBERKDH
-//	Module			: WifiClient
+//	Module			: DHWifiClient
 //	History			:
 //	Copyrights		: Copyright (C)CYBERKDH@HOTMAIL.COM. All Rights Reserved.
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -9,12 +9,13 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using DHWifiClient.NET.log;
+using DHWifiClient.NET.module;
 using DHWifiClient.NET.win32;
 
 namespace DHWifiClient.NET
 {
     /// <summary>Entry point for the Windows Native WiFi API (wlanapi.dll).</summary>
-    public class WifiClient : IDisposable
+    public class DHWifiClient : IDisposable
     {
         private const uint ClientVersion = 2; // Windows Vista or later
 
@@ -30,12 +31,12 @@ namespace DHWifiClient.NET
         /// </summary>
         public event EventHandler<WifiNotificationEventArgs> Notification;
 
-        public WifiClient()
+        public DHWifiClient()
         {
             int nResult = WlanNativeMethods.WlanOpenHandle(
                 ClientVersion, IntPtr.Zero, out _, out m_pClientHandle);
             WifiException.ThrowIfError(nResult);
-            Logger.Info("WifiClient handle opened");
+            Logger.Info("DHWifiClient handle opened");
 
             m_oNotificationCallback = OnNativeNotification;
             int nNotifyResult = WlanNativeMethods.WlanRegisterNotification(
@@ -110,7 +111,7 @@ namespace DHWifiClient.NET
         {
             if (m_bDisposed)
             {
-                throw new ObjectDisposedException(nameof(WifiClient));
+                throw new ObjectDisposedException(nameof(DHWifiClient));
             }
         }
 
@@ -134,13 +135,13 @@ namespace DHWifiClient.NET
                     null, IntPtr.Zero, IntPtr.Zero, out _);
                 WlanNativeMethods.WlanCloseHandle(m_pClientHandle, IntPtr.Zero);
                 m_pClientHandle = IntPtr.Zero;
-                Logger.Info("WifiClient handle closed");
+                Logger.Info("DHWifiClient handle closed");
             }
 
             m_bDisposed = true;
         }
 
-        ~WifiClient()
+        ~DHWifiClient()
         {
             Dispose(false);
         }

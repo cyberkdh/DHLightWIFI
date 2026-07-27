@@ -5,7 +5,7 @@
 //	History			:
 //	Copyrights		: Copyright (C)CYBERKDH@HOTMAIL.COM. All Rights Reserved.
 //////////////////////////////////////////////////////////////////////////////////////////////////
-namespace DHWifiClient.NET
+namespace DHWifiClient.NET.module
 {
     /// <summary>Metadata for a WLAN profile saved on the current interface (name only — never contains the key material).</summary>
     public class WifiProfileInfo

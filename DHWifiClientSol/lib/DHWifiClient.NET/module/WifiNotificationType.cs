@@ -5,9 +5,9 @@
 //	History			:
 //	Copyrights		: Copyright (C)CYBERKDH@HOTMAIL.COM. All Rights Reserved.
 //////////////////////////////////////////////////////////////////////////////////////////////////
-namespace DHWifiClient.NET
+namespace DHWifiClient.NET.module
 {
-    /// <summary>Kinds of real-time WLAN state-change notifications surfaced by <see cref="WifiClient.Notification"/>.</summary>
+    /// <summary>Kinds of real-time WLAN state-change notifications surfaced by <see cref="DHWifiClient.Notification"/>.</summary>
     public enum WifiNotificationType
     {
         Unknown,

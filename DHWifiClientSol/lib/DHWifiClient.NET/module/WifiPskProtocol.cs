@@ -5,7 +5,7 @@
 //	History			:
 //	Copyrights		: Copyright (C)CYBERKDH@HOTMAIL.COM. All Rights Reserved.
 //////////////////////////////////////////////////////////////////////////////////////////////////
-namespace DHWifiClient.NET
+namespace DHWifiClient.NET.module
 {
     /// <summary>PSK protocol version for a WPA-Personal connection profile.</summary>
     public enum WifiPskProtocol

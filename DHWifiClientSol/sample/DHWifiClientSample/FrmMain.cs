@@ -10,14 +10,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
-using DHWifiClient.NET;
 using DHWifiClient.NET.log;
+using DHWifiClient.NET.module;
 
 namespace DHWifiClientSample
 {
     public partial class FrmMain : Form
     {
-        private WifiClient m_oClient;
+        private DHWifiClient.NET.DHWifiClient m_oClient;
         private List<WifiInterface> m_listInterfaces = new List<WifiInterface>();
         private Timer m_oScanCompleteTimer;
         private TextBoxLogWriter m_oLogWriter;
@@ -56,7 +56,7 @@ namespace DHWifiClientSample
             {
                 if (m_oClient == null)
                 {
-                    m_oClient = new WifiClient();
+                    m_oClient = new DHWifiClient.NET.DHWifiClient();
                     m_oClient.Notification += Client_Notification;
                 }
 
@@ -64,7 +64,7 @@ namespace DHWifiClientSample
             }
             catch (Exception oEx)
             {
-                Logger.Error("Failed to initialize WifiClient", oEx);
+                Logger.Error("Failed to initialize DHWifiClient", oEx);
                 lblWifiCheckResult.Text = "WiFi Adapter: Check failed";
                 MessageBox.Show(this, "Unable to check WiFi adapter presence: " + oEx.Message, "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -167,12 +167,18 @@ namespace DHWifiClientSample
             btnHiddenNetwork.Enabled = enabled;
             btnDeleteProfile.Enabled = enabled;
             lvNetworks.Enabled = enabled;
+            chkIncludeEmptySsids.Enabled = enabled;
         }
 
         private void cmbAdapter_SelectedIndexChanged(object sender, EventArgs e)
         {
             RefreshRadioState();
             RefreshNetworkList();
+        }
+
+        private void chkIncludeEmptySsids_CheckedChanged(object sender, EventArgs e)
+        {
+            RefreshNetworkList(announceCount: false);
         }
 
         private void RefreshRadioState()
@@ -230,8 +236,11 @@ namespace DHWifiClientSample
 
             try
             {
-                var listNetworks = oIface.GetAvailableNetworks();
-                Logger.Debug($"[{oIface.Name}] Network list: [{string.Join(", ", listNetworks.Select(n => $"{n.Ssid}({n.Authentication}/{n.Cipher})"))}]");
+                // BSSID resolution is enabled here so that duplicate/blank-SSID rows (e.g. hidden
+                // networks) can be told apart by their actual AP MAC address; see the Bssids= entries
+                // in the debug log below.
+                var listNetworks = oIface.GetAvailableNetworks(includeBssids: true, includeEmptySsids: chkIncludeEmptySsids.Checked);
+                Logger.Debug($"[{oIface.Name}] Network list: [{string.Join("\r\n", listNetworks.Select(n => $"{n.Ssid}({n.Authentication}/{n.Cipher}) Bssids=[{string.Join(",", n.Bssids)}]"))}]");
 
                 // WlanGetAvailableNetworkList's HasProfile flag reflects wlansvc's cached scan
                 // snapshot, which can briefly still report a profile as present right after
@@ -242,9 +251,21 @@ namespace DHWifiClientSample
                 // The same SSID can legitimately appear more than once (multiple BSSes/mesh nodes
                 // broadcasting the same name, or multiple hidden networks all showing an empty SSID),
                 // so networks are grouped into per-SSID queues rather than keyed 1:1 by SSID.
+                //
+                // Exception: for a named (non-hidden) SSID, WlanGetAvailableNetworkList can report a
+                // non-broadcast network with a saved profile as two entries (one profile-matched/
+                // connected, one raw scan hit) even though there is only one physical AP. When one of
+                // the duplicates is Connected, the other is a phantom of that same quirk, so it is
+                // dropped. Blank (hidden) SSIDs are left untouched since those duplicates are usually
+                // genuinely different APs.
                 var dictNetworksBySsid = listNetworks
                     .GroupBy(n => n.Ssid)
-                    .ToDictionary(g => g.Key, g => new Queue<WifiNetwork>(g));
+                    .ToDictionary(
+                        g => g.Key,
+                        g => new Queue<WifiNetwork>(
+                            !string.IsNullOrEmpty(g.Key) && g.Any(n => n.IsConnected)
+                                ? g.Where(n => n.IsConnected)
+                                : g));
 
                 // Remove rows for networks that dropped out of range.
                 for (int ni = lvNetworks.Items.Count - 1; ni >= 0; ni--)
@@ -299,9 +320,11 @@ namespace DHWifiClientSample
         {
             bool bHasProfile = !string.IsNullOrEmpty(network.ProfileName) && savedProfileNames.Contains(network.ProfileName);
             string strSecurity = network.SecurityEnabled ? network.Authentication.ToString() : "Open";
+            string strCipher = network.SecurityEnabled ? network.Cipher.ToString() : "-";
+            string strBssid = network.Bssids.Count > 0 ? string.Join(", ", network.Bssids) : "-";
             string strStatus = network.IsConnected ? "Connected" : (bHasProfile ? "Profile saved" : "-");
 
-            string[] arrValues = { network.Ssid, network.SignalQuality + "%", strSecurity, strStatus };
+            string[] arrValues = { network.Ssid, network.SignalQuality + "%", strSecurity, strCipher, strBssid, strStatus };
 
             if (item.SubItems.Count != arrValues.Length)
             {
@@ -463,20 +486,20 @@ namespace DHWifiClientSample
                     switch (oDlg.SecurityType)
                     {
                         case HiddenNetworkSecurityType.Open:
-                            oIface.Connect(oDlg.Ssid);
+                            oIface.Connect(oDlg.Ssid, isHidden: true);
                             break;
 
                         case HiddenNetworkSecurityType.Wep:
-                            oIface.ConnectWep(oDlg.Ssid, oDlg.Password);
+                            oIface.ConnectWep(oDlg.Ssid, oDlg.Password, isHidden: true);
                             break;
 
                         case HiddenNetworkSecurityType.WpaPersonalTkip:
-                            oIface.Connect(oDlg.Ssid, oDlg.Password, WifiPskProtocol.WPA, WifiCipher.TKIP);
+                            oIface.Connect(oDlg.Ssid, oDlg.Password, WifiPskProtocol.WPA, WifiCipher.TKIP, isHidden: true);
                             break;
 
                         case HiddenNetworkSecurityType.Wpa2PersonalAes:
                         default:
-                            oIface.Connect(oDlg.Ssid, oDlg.Password, WifiPskProtocol.WPA2, WifiCipher.AES);
+                            oIface.Connect(oDlg.Ssid, oDlg.Password, WifiPskProtocol.WPA2, WifiCipher.AES, isHidden: true);
                             break;
                     }
 

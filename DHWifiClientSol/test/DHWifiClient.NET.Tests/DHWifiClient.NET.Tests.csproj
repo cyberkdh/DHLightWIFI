@@ -4,13 +4,18 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{32BB3B43-0AC5-41EC-9B17-D70BE98DA68E}</ProjectGuid>
+    <ProjectGuid>{6F6A5C7F-2E1B-4B7A-9C2A-8B7A0B9E5D31}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>DHWifiClient.NET</RootNamespace>
-    <AssemblyName>DHWifiClient.NET</AssemblyName>
+    <RootNamespace>DHWifiClient.NET.Tests</RootNamespace>
+    <AssemblyName>DHWifiClient.NET.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
+    <ReferencePath>$(ProgramFiles)\Common Files\microsoft shared\VSTT\$(VisualStudioVersion)\UITestExtensionPackages</ReferencePath>
+    <IsCodedUITest>False</IsCodedUITest>
+    <TestProjectType>UnitTest</TestProjectType>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -32,38 +37,22 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\ReferenceAssemblies\v4.0\Microsoft.VisualStudio.QualityTools.UnitTestFramework.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DHWifiClient.cs" />
-    <Compile Include="module\WifiAuthentication.cs" />
-    <Compile Include="module\WifiCipher.cs" />
-    <Compile Include="module\WifiCipherAlgorithm.cs" />
-    <Compile Include="module\WifiException.cs" />
-    <Compile Include="module\WifiInterface.cs" />
-    <Compile Include="module\WifiInterfaceState.cs" />
-    <Compile Include="module\WifiNetwork.cs" />
-    <Compile Include="module\WifiNotificationEventArgs.cs" />
-    <Compile Include="module\WifiNotificationType.cs" />
-    <Compile Include="module\WifiProfileInfo.cs" />
-    <Compile Include="module\WifiPskProtocol.cs" />
-    <Compile Include="module\WifiRadioState.cs" />
-    <Compile Include="module\WifiWepAuthentication.cs" />
-    <Compile Include="log\FileLogWriter.cs" />
-    <Compile Include="log\ILogWriter.cs" />
-    <Compile Include="log\LogLevel.cs" />
-    <Compile Include="log\Logger.cs" />
-    <Compile Include="win32\WlanEnums.cs" />
-    <Compile Include="win32\WlanNativeMethods.cs" />
-    <Compile Include="win32\WlanProfileXml.cs" />
-    <Compile Include="win32\WlanStructures.cs" />
+    <Compile Include="WlanProfileXmlTests.cs" />
+    <Compile Include="WifiInterfaceHelperTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\lib\DHWifiClient.NET\DHWifiClient.NET.csproj">
+      <Project>{32BB3B43-0AC5-41EC-9B17-D70BE98DA68E}</Project>
+      <Name>DHWifiClient.NET</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

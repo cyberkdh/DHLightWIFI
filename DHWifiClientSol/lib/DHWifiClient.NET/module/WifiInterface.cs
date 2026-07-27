@@ -12,7 +12,7 @@ using System.Text;
 using DHWifiClient.NET.log;
 using DHWifiClient.NET.win32;
 
-namespace DHWifiClient.NET
+namespace DHWifiClient.NET.module
 {
     public class WifiInterface
     {
@@ -39,8 +39,21 @@ namespace DHWifiClient.NET
             WifiException.ThrowIfError(nResult);
         }
 
-        /// <summary>Gets the list of currently visible WiFi networks.</summary>
-        public IReadOnlyList<WifiNetwork> GetAvailableNetworks()
+        /// <summary>
+        /// Gets the list of currently visible WiFi networks.
+        /// </summary>
+        /// <param name="includeBssids">
+        /// When true, also resolves each entry's <see cref="WifiNetwork.Bssids"/> via a separate
+        /// WlanGetNetworkBssList query per entry. Off by default, since it costs one extra native call
+        /// per scanned network; enable it when the caller needs to tell apart multiple physical APs that
+        /// share the same (or, for hidden networks, an empty) SSID.
+        /// </param>
+        /// <param name="includeEmptySsids">
+        /// When false, entries whose SSID could not be decoded (e.g. non-broadcast/hidden networks with
+        /// no saved profile) are excluded from the result. True by default, matching the raw
+        /// WlanGetAvailableNetworkList output.
+        /// </param>
+        public IReadOnlyList<WifiNetwork> GetAvailableNetworks(bool includeBssids = false, bool includeEmptySsids = true)
         {
             var gGuid = Id;
             int nResult = WlanNativeMethods.WlanGetAvailableNetworkList(
@@ -59,9 +72,15 @@ namespace DHWifiClient.NET
                     IntPtr pItemPtr = IntPtr.Add(pListPtr, nHeaderSize + ni * nItemSize);
                     var oItem = Marshal.PtrToStructure<WlanAvailableNetwork>(pItemPtr);
 
+                    string strSsid = DecodeSsid(oItem.Dot11Ssid);
+                    if (!includeEmptySsids && string.IsNullOrEmpty(strSsid))
+                    {
+                        continue;
+                    }
+
                     listNetworks.Add(new WifiNetwork
                     {
-                        Ssid = DecodeSsid(oItem.Dot11Ssid),
+                        Ssid = strSsid,
                         ProfileName = oItem.ProfileName,
                         SecurityEnabled = oItem.SecurityEnabled,
                         Authentication = MapAuthentication(oItem.Dot11DefaultAuthAlgorithm),
@@ -69,6 +88,10 @@ namespace DHWifiClient.NET
                         IsConnected = (oItem.Flags & WlanAvailableNetworkFlags.Connected) != 0,
                         HasProfile = (oItem.Flags & WlanAvailableNetworkFlags.HasProfile) != 0,
                         SignalQuality = oItem.SignalQuality,
+                        Bssids = includeBssids
+                            ? (IReadOnlyList<string>)QueryBssids(oItem.Dot11Ssid, oItem.Dot11BssType, oItem.SecurityEnabled,
+                                Math.Max(1, (int)oItem.NumberOfBssids))
+                            : System.Array.Empty<string>(),
                     });
                 }
             }
@@ -82,24 +105,24 @@ namespace DHWifiClient.NET
         }
 
         /// <summary>Connects to the specified SSID. If <paramref name="password"/> is null, the network is treated as open.</summary>
-        public void Connect(string ssid, string password = null)
+        public void Connect(string ssid, string password = null, bool isHidden = false)
         {
             if (string.IsNullOrEmpty(ssid))
             {
                 throw new ArgumentException("ssid is required", nameof(ssid));
             }
 
-            Logger.Info($"[{Name}] Connect attempt: SSID={ssid}"); // Never log the password
+            Logger.Info($"[{Name}] Connect attempt: SSID={ssid}, Hidden={isHidden}"); // Never log the password
 
             string strProfileXml;
             if (string.IsNullOrEmpty(password))
             {
-                strProfileXml = WlanProfileXml.CreateOpen(ssid);
+                strProfileXml = WlanProfileXml.CreateOpen(ssid, isHidden);
             }
             else
             {
                 ValidatePskPassphrase(password);
-                strProfileXml = WlanProfileXml.CreateWpa2Psk(ssid, password);
+                strProfileXml = WlanProfileXml.CreateWpa2Psk(ssid, password, isHidden);
             }
 
             SetProfile(strProfileXml);
@@ -164,7 +187,7 @@ namespace DHWifiClient.NET
         }
 
         /// <summary>Connects to a WPA/WPA2-Personal (PSK) network with an explicit protocol and cipher combination.</summary>
-        public void Connect(string ssid, string password, WifiPskProtocol protocol, WifiCipher cipher)
+        public void Connect(string ssid, string password, WifiPskProtocol protocol, WifiCipher cipher, bool isHidden = false)
         {
             if (string.IsNullOrEmpty(ssid))
             {
@@ -178,11 +201,11 @@ namespace DHWifiClient.NET
 
             ValidatePskPassphrase(password);
 
-            Logger.Info($"[{Name}] Connect attempt: SSID={ssid}, Protocol={protocol}, Cipher={cipher}"); // Never log the password
+            Logger.Info($"[{Name}] Connect attempt: SSID={ssid}, Protocol={protocol}, Cipher={cipher}, Hidden={isHidden}"); // Never log the password
 
             string strAuthentication = protocol == WifiPskProtocol.WPA2 ? "WPA2PSK" : "WPAPSK";
             string strEncryption = cipher == WifiCipher.TKIP ? "TKIP" : "AES";
-            string strProfileXml = WlanProfileXml.CreatePsk(ssid, password, strAuthentication, strEncryption);
+            string strProfileXml = WlanProfileXml.CreatePsk(ssid, password, strAuthentication, strEncryption, isHidden);
 
             SetProfile(strProfileXml);
             ConnectProfile(ssid);
@@ -194,7 +217,7 @@ namespace DHWifiClient.NET
         /// or a 10/26-character hex key. WEP is deprecated and trivially breakable; use only for compatibility with
         /// legacy hardware that cannot support WPA2/WPA3.
         /// </summary>
-        public void ConnectWep(string ssid, string wepKey, WifiWepAuthentication authentication = WifiWepAuthentication.Open, int keyIndex = 0)
+        public void ConnectWep(string ssid, string wepKey, WifiWepAuthentication authentication = WifiWepAuthentication.Open, int keyIndex = 0, bool isHidden = false)
         {
             if (string.IsNullOrEmpty(ssid))
             {
@@ -206,11 +229,11 @@ namespace DHWifiClient.NET
                 throw new ArgumentOutOfRangeException(nameof(keyIndex), "keyIndex must be between 0 and 3");
             }
 
-            Logger.Info($"[{Name}] WEP connect attempt (legacy, deprecated): SSID={ssid}"); // Never log the key
+            Logger.Info($"[{Name}] WEP connect attempt (legacy, deprecated): SSID={ssid}, Hidden={isHidden}"); // Never log the key
 
             string strKeyMaterialHex = NormalizeWepKeyToHex(wepKey);
             string strAuthValue = authentication == WifiWepAuthentication.Shared ? "shared" : "open";
-            string strProfileXml = WlanProfileXml.CreateWep(ssid, strKeyMaterialHex, strAuthValue, keyIndex);
+            string strProfileXml = WlanProfileXml.CreateWep(ssid, strKeyMaterialHex, strAuthValue, keyIndex, isHidden);
 
             SetProfile(strProfileXml);
             ConnectProfile(ssid);
@@ -410,7 +433,7 @@ namespace DHWifiClient.NET
         /// unhelpful ERROR_BAD_PROFILE (1206, "The network connection profile is corrupted") - this check surfaces
         /// the real cause up front instead.
         /// </summary>
-        private static void ValidatePskPassphrase(string passphrase)
+        internal static void ValidatePskPassphrase(string passphrase)
         {
             if (passphrase.Length < 8 || passphrase.Length > 63)
             {
@@ -460,7 +483,86 @@ namespace DHWifiClient.NET
             return true;
         }
 
-        private static string DecodeSsid(Dot11Ssid ssid)
+        /// <summary>
+        /// Best-effort BSSID lookup for one WlanGetAvailableNetworkList entry, via a separate
+        /// WlanGetNetworkBssList query filtered to the same SSID/BSS type/security setting. Returns an
+        /// empty list rather than throwing if the query fails, since a missing BSSID must not break the
+        /// primary network list. <paramref name="maxCount"/> caps the result at the entry's own
+        /// NumberOfBssids, since a wildcard (empty-SSID) filter can otherwise also match unrelated hidden
+        /// networks elsewhere in range.
+        /// </summary>
+        private List<string> QueryBssids(Dot11Ssid ssid, Dot11BssType bssType, bool securityEnabled, int maxCount)
+        {
+            var listBssids = new List<string>();
+            var gGuid = Id;
+            IntPtr pSsidPtr = IntPtr.Zero;
+            IntPtr pListPtr = IntPtr.Zero;
+            try
+            {
+                pSsidPtr = Marshal.AllocHGlobal(Marshal.SizeOf<Dot11Ssid>());
+                Marshal.StructureToPtr(ssid, pSsidPtr, false);
+
+                int nResult = WlanNativeMethods.WlanGetNetworkBssList(
+                    m_pClientHandle, ref gGuid, pSsidPtr, bssType, securityEnabled, IntPtr.Zero, out pListPtr);
+                if (nResult != 0)
+                {
+                    Logger.Debug($"[{Name}] WlanGetNetworkBssList failed (code={nResult}); Bssids left empty for this entry");
+                    return listBssids;
+                }
+
+                var oHeader = Marshal.PtrToStructure<WlanBssListHeader>(pListPtr);
+                int nHeaderSize = Marshal.SizeOf<WlanBssListHeader>();
+                int nItemSize = Marshal.SizeOf<WlanBssEntry>();
+
+                for (int ni = 0; ni < oHeader.NumberOfItems && listBssids.Count < maxCount; ni++)
+                {
+                    IntPtr pItemPtr = IntPtr.Add(pListPtr, nHeaderSize + ni * nItemSize);
+                    var oItem = Marshal.PtrToStructure<WlanBssEntry>(pItemPtr);
+                    string strBssid = FormatBssid(oItem.Dot11Bssid);
+                    if (strBssid != null)
+                    {
+                        listBssids.Add(strBssid);
+                    }
+                }
+            }
+            catch (Exception oEx)
+            {
+                Logger.Debug($"[{Name}] BSSID lookup failed; Bssids left empty for this entry: {oEx.Message}");
+            }
+            finally
+            {
+                if (pListPtr != IntPtr.Zero)
+                {
+                    WlanNativeMethods.WlanFreeMemory(pListPtr);
+                }
+                if (pSsidPtr != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(pSsidPtr);
+                }
+            }
+            return listBssids;
+        }
+
+        internal static string FormatBssid(byte[] bssidBytes)
+        {
+            if (bssidBytes == null || bssidBytes.Length != 6)
+            {
+                return null;
+            }
+
+            var oSb = new StringBuilder(17);
+            for (int ni = 0; ni < bssidBytes.Length; ni++)
+            {
+                if (ni > 0)
+                {
+                    oSb.Append(':');
+                }
+                oSb.Append(bssidBytes[ni].ToString("X2"));
+            }
+            return oSb.ToString();
+        }
+
+        internal static string DecodeSsid(Dot11Ssid ssid)
         {
             if (ssid.SsidBytes == null || ssid.SsidLength == 0)
             {

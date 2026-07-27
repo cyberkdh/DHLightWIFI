@@ -28,42 +28,46 @@ namespace DHWifiClientSample {
 			this.btnOk = new System.Windows.Forms.Button();
 			this.btnCancel = new System.Windows.Forms.Button();
 			this.SuspendLayout();
-			//
+			// 
 			// lblPassword
-			//
+			// 
 			this.lblPassword.AutoSize = true;
 			this.lblPassword.Location = new System.Drawing.Point(12, 15);
 			this.lblPassword.Name = "lblPassword";
-			this.lblPassword.Size = new System.Drawing.Size(60, 12);
+			this.lblPassword.Size = new System.Drawing.Size(56, 13);
+			this.lblPassword.TabIndex = 3;
 			this.lblPassword.Text = "Password:";
-			//
+			// 
 			// txtPassword
-			//
+			// 
 			this.txtPassword.Location = new System.Drawing.Point(12, 38);
 			this.txtPassword.Name = "txtPassword";
-			this.txtPassword.Size = new System.Drawing.Size(296, 23);
+			this.txtPassword.Size = new System.Drawing.Size(296, 20);
+			this.txtPassword.TabIndex = 0;
 			this.txtPassword.UseSystemPasswordChar = true;
-			//
+			// 
 			// btnOk
-			//
+			// 
 			this.btnOk.DialogResult = System.Windows.Forms.DialogResult.OK;
 			this.btnOk.Location = new System.Drawing.Point(150, 72);
 			this.btnOk.Name = "btnOk";
 			this.btnOk.Size = new System.Drawing.Size(75, 26);
+			this.btnOk.TabIndex = 1;
 			this.btnOk.Text = "OK";
 			this.btnOk.UseVisualStyleBackColor = true;
-			//
+			// 
 			// btnCancel
-			//
+			// 
 			this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
 			this.btnCancel.Location = new System.Drawing.Point(233, 72);
 			this.btnCancel.Name = "btnCancel";
 			this.btnCancel.Size = new System.Drawing.Size(75, 26);
+			this.btnCancel.TabIndex = 2;
 			this.btnCancel.Text = "Cancel";
 			this.btnCancel.UseVisualStyleBackColor = true;
-			//
+			// 
 			// PasswordDialog
-			//
+			// 
 			this.AcceptButton = this.btnOk;
 			this.CancelButton = this.btnCancel;
 			this.ClientSize = new System.Drawing.Size(320, 110);
@@ -79,6 +83,7 @@ namespace DHWifiClientSample {
 			this.Text = "Enter Network Password";
 			this.ResumeLayout(false);
 			this.PerformLayout();
+
 		}
 
 		#endregion

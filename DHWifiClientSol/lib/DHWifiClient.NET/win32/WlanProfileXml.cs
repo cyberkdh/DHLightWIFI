@@ -12,7 +12,7 @@ namespace DHWifiClient.NET.win32
     /// <summary>Generates WLAN profile XML.</summary>
     internal static class WlanProfileXml
     {
-        public static string CreateOpen(string ssid)
+        public static string CreateOpen(string ssid, bool isHidden = false)
         {
             return
 $@"<?xml version=""1.0""?>
@@ -22,6 +22,7 @@ $@"<?xml version=""1.0""?>
         <SSID>
             <name>{SecurityElement.Escape(ssid)}</name>
         </SSID>
+        <nonBroadcast>{(isHidden ? "true" : "false")}</nonBroadcast>
     </SSIDConfig>
     <connectionType>ESS</connectionType>
     <connectionMode>manual</connectionMode>
@@ -37,16 +38,16 @@ $@"<?xml version=""1.0""?>
 </WLANProfile>";
         }
 
-        public static string CreateWpa2Psk(string ssid, string passphrase)
+        public static string CreateWpa2Psk(string ssid, string passphrase, bool isHidden = false)
         {
-            return CreatePsk(ssid, passphrase, "WPA2PSK", "AES");
+            return CreatePsk(ssid, passphrase, "WPA2PSK", "AES", isHidden);
         }
 
         /// <summary>
         /// Creates a WPA/WPA2-Personal (PSK) profile with an explicit authentication/encryption combination.
         /// <paramref name="authentication"/> must be "WPAPSK" or "WPA2PSK"; <paramref name="encryption"/> must be "AES" or "TKIP".
         /// </summary>
-        public static string CreatePsk(string ssid, string passphrase, string authentication, string encryption)
+        public static string CreatePsk(string ssid, string passphrase, string authentication, string encryption, bool isHidden = false)
         {
             return
 $@"<?xml version=""1.0""?>
@@ -56,6 +57,7 @@ $@"<?xml version=""1.0""?>
         <SSID>
             <name>{SecurityElement.Escape(ssid)}</name>
         </SSID>
+        <nonBroadcast>{(isHidden ? "true" : "false")}</nonBroadcast>
     </SSIDConfig>
     <connectionType>ESS</connectionType>
     <connectionMode>manual</connectionMode>
@@ -80,7 +82,7 @@ $@"<?xml version=""1.0""?>
         /// Creates a legacy WEP profile. <paramref name="keyMaterialHex"/> must already be a 10 or 26-digit hex string.
         /// WEP is deprecated and trivially breakable; use only for compatibility with legacy hardware.
         /// </summary>
-        public static string CreateWep(string ssid, string keyMaterialHex, string authentication, int keyIndex)
+        public static string CreateWep(string ssid, string keyMaterialHex, string authentication, int keyIndex, bool isHidden = false)
         {
             return
 $@"<?xml version=""1.0""?>
@@ -90,6 +92,7 @@ $@"<?xml version=""1.0""?>
         <SSID>
             <name>{SecurityElement.Escape(ssid)}</name>
         </SSID>
+        <nonBroadcast>{(isHidden ? "true" : "false")}</nonBroadcast>
     </SSIDConfig>
     <connectionType>ESS</connectionType>
     <connectionMode>manual</connectionMode>

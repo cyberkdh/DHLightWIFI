@@ -9,7 +9,7 @@ using System;
 using System.ComponentModel;
 using DHWifiClient.NET.log;
 
-namespace DHWifiClient.NET
+namespace DHWifiClient.NET.module
 {
     public class WifiException : Exception
     {

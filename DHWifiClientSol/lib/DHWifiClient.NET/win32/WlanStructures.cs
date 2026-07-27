@@ -129,4 +129,52 @@ namespace DHWifiClient.NET.win32
         public uint DataSize;
         public IntPtr DataPtr;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct WlanRateSet
+    {
+        public uint RateSetLength;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 126)]
+        public ushort[] RateSet;
+    }
+
+    /// <summary>
+    /// Native WLAN_BSS_ENTRY. Field order/types must match exactly - in particular, bInRegDomain is
+    /// a 1-byte Win32 BOOLEAN (not the 4-byte BOOL used elsewhere in this API), so it is marshaled as
+    /// UnmanagedType.U1; getting this wrong shifts every field after it to the wrong byte offset.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct WlanBssEntry
+    {
+        public Dot11Ssid Dot11Ssid;
+        public uint PhyId;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 6)]
+        public byte[] Dot11Bssid;
+
+        public Dot11BssType Dot11BssType;
+        public uint Dot11BssPhyType;
+        public int Rssi;
+        public uint LinkQuality;
+
+        [MarshalAs(UnmanagedType.U1)]
+        public bool InRegDomain;
+
+        public ushort BeaconPeriod;
+        public ulong Timestamp;
+        public ulong HostTimestamp;
+        public ushort CapabilityInformation;
+        public uint ChCenterFrequency;
+        public WlanRateSet WlanRateSet;
+        public uint IeOffset;
+        public uint IeSize;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct WlanBssListHeader
+    {
+        public uint TotalSize;
+        public uint NumberOfItems;
+    }
 }

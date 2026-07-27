@@ -5,7 +5,7 @@
 //	History			:
 //	Copyrights		: Copyright (C)CYBERKDH@HOTMAIL.COM. All Rights Reserved.
 //////////////////////////////////////////////////////////////////////////////////////////////////
-namespace DHWifiClient.NET
+namespace DHWifiClient.NET.module
 {
     public enum WifiInterfaceState
     {

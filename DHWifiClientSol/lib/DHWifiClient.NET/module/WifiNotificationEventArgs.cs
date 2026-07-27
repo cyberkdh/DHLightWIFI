@@ -7,7 +7,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////
 using System;
 
-namespace DHWifiClient.NET
+namespace DHWifiClient.NET.module
 {
     public class WifiNotificationEventArgs : EventArgs
     {

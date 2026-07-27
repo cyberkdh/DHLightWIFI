@@ -44,6 +44,21 @@ namespace DHWifiClient.NET.win32
             IntPtr pReserved,
             out IntPtr ppAvailableNetworkList);
 
+        /// <summary>
+        /// Raw per-BSS (physical access point) scan cache query. Unlike WlanGetAvailableNetworkList, each
+        /// returned entry carries its own BSSID (MAC address), which is the only way to tell apart multiple
+        /// physical APs that share the same (or, for hidden networks, an empty) SSID.
+        /// </summary>
+        [DllImport("wlanapi.dll")]
+        public static extern int WlanGetNetworkBssList(
+            IntPtr hClientHandle,
+            [In] ref Guid pInterfaceGuid,
+            IntPtr pDot11Ssid,
+            Dot11BssType dot11BssType,
+            [MarshalAs(UnmanagedType.Bool)] bool bSecurityEnabled,
+            IntPtr pReserved,
+            out IntPtr ppWlanBssList);
+
         [DllImport("wlanapi.dll")]
         public static extern int WlanScan(
             IntPtr hClientHandle,

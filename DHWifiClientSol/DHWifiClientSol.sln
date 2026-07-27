@@ -7,9 +7,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "lib", "lib", "{02EA681E-C7D
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample", "sample", "{32E9140F-9A87-488A-A57E-CFEA5F9631C9}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{9B6A5B0E-5B4D-4E5C-8B3E-3F5D3E5C7A2B}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DHWifiClientSample", "sample\DHWifiClientSample\DHWifiClientSample.csproj", "{18192EC4-1A38-43FD-94A3-1C92D2B1BD6C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DHWifiClient.NET", "lib\DHWifiClient.NET\DHWifiClient.NET.csproj", "{32BB3B43-0AC5-41EC-9B17-D70BE98DA68E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DHWifiClient.NET.Tests", "test\DHWifiClient.NET.Tests\DHWifiClient.NET.Tests.csproj", "{6F6A5C7F-2E1B-4B7A-9C2A-8B7A0B9E5D31}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,6 +29,10 @@ Global
 		{32BB3B43-0AC5-41EC-9B17-D70BE98DA68E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{32BB3B43-0AC5-41EC-9B17-D70BE98DA68E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{32BB3B43-0AC5-41EC-9B17-D70BE98DA68E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6F6A5C7F-2E1B-4B7A-9C2A-8B7A0B9E5D31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F6A5C7F-2E1B-4B7A-9C2A-8B7A0B9E5D31}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F6A5C7F-2E1B-4B7A-9C2A-8B7A0B9E5D31}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F6A5C7F-2E1B-4B7A-9C2A-8B7A0B9E5D31}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -32,6 +40,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{18192EC4-1A38-43FD-94A3-1C92D2B1BD6C} = {32E9140F-9A87-488A-A57E-CFEA5F9631C9}
 		{32BB3B43-0AC5-41EC-9B17-D70BE98DA68E} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{6F6A5C7F-2E1B-4B7A-9C2A-8B7A0B9E5D31} = {9B6A5B0E-5B4D-4E5C-8B3E-3F5D3E5C7A2B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {31F211A1-7490-4937-8649-725CD572DAD0}
