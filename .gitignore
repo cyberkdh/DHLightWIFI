@@ -7,3 +7,5 @@
 /DHWifiClientSol/lib/DHWifiClient.NET/obj
 /DHWifiClientSol/output
 /DHWifiClientSol/sample/DHWifiClientSample/obj
+/DHWifiClientSol/test/DHWifiClient.NET.Tests/bin
+/DHWifiClientSol/test/DHWifiClient.NET.Tests/obj
