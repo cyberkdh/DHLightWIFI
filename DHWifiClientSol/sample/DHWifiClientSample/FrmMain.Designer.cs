@@ -30,7 +30,9 @@ namespace DHWifiClientSample {
 			this.lblRadioState = new System.Windows.Forms.Label();
 			this.btnRadioToggle = new System.Windows.Forms.Button();
 			this.btnScan = new System.Windows.Forms.Button();
-			this.chkIncludeEmptySsids = new System.Windows.Forms.CheckBox();
+			this.chkMergeDuplicateBssids = new System.Windows.Forms.CheckBox();
+			this.chkDeleteProfileOnAuthFailure = new System.Windows.Forms.CheckBox();
+			this.btnConnectEnterprise = new System.Windows.Forms.Button();
 			this.lvNetworks = new System.Windows.Forms.ListView();
 			this.colSsid = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.colSignal = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -39,6 +41,7 @@ namespace DHWifiClientSample {
 			this.colBssid = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.colStatus = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.btnConnect = new System.Windows.Forms.Button();
+			this.btnReconnectSaved = new System.Windows.Forms.Button();
 			this.btnDisconnect = new System.Windows.Forms.Button();
 			this.btnHiddenNetwork = new System.Windows.Forms.Button();
 			this.btnDeleteProfile = new System.Windows.Forms.Button();
@@ -118,23 +121,44 @@ namespace DHWifiClientSample {
 			this.btnScan.Text = "Scan";
 			this.btnScan.UseVisualStyleBackColor = true;
 			this.btnScan.Click += new System.EventHandler(this.btnScan_Click);
+			// 
+			// chkMergeDuplicateBssids
+			// 
+			this.chkMergeDuplicateBssids.AutoSize = true;
+			this.chkMergeDuplicateBssids.Checked = true;
+			this.chkMergeDuplicateBssids.CheckState = System.Windows.Forms.CheckState.Checked;
+			this.chkMergeDuplicateBssids.Location = new System.Drawing.Point(12, 74);
+			this.chkMergeDuplicateBssids.Name = "chkMergeDuplicateBssids";
+			this.chkMergeDuplicateBssids.Size = new System.Drawing.Size(205, 17);
+			this.chkMergeDuplicateBssids.TabIndex = 27;
+			this.chkMergeDuplicateBssids.Text = "Merge duplicate entries (same BSSID)";
+			this.chkMergeDuplicateBssids.UseVisualStyleBackColor = true;
+			this.chkMergeDuplicateBssids.CheckedChanged += new System.EventHandler(this.chkMergeDuplicateBssids_CheckedChanged);
 			//
-			// chkIncludeEmptySsids
+			// chkDeleteProfileOnAuthFailure
 			//
-			this.chkIncludeEmptySsids.AutoSize = true;
-			this.chkIncludeEmptySsids.Checked = true;
-			this.chkIncludeEmptySsids.CheckState = System.Windows.Forms.CheckState.Checked;
-			this.chkIncludeEmptySsids.Location = new System.Drawing.Point(12, 74);
-			this.chkIncludeEmptySsids.Name = "chkIncludeEmptySsids";
-			this.chkIncludeEmptySsids.Size = new System.Drawing.Size(200, 17);
-			this.chkIncludeEmptySsids.TabIndex = 26;
-			this.chkIncludeEmptySsids.Text = "Show hidden (blank SSID) networks";
-			this.chkIncludeEmptySsids.UseVisualStyleBackColor = true;
-			this.chkIncludeEmptySsids.CheckedChanged += new System.EventHandler(this.chkIncludeEmptySsids_CheckedChanged);
+			this.chkDeleteProfileOnAuthFailure.AutoSize = true;
+			this.chkDeleteProfileOnAuthFailure.Location = new System.Drawing.Point(230, 74);
+			this.chkDeleteProfileOnAuthFailure.Name = "chkDeleteProfileOnAuthFailure";
+			this.chkDeleteProfileOnAuthFailure.Size = new System.Drawing.Size(160, 17);
+			this.chkDeleteProfileOnAuthFailure.TabIndex = 29;
+			this.chkDeleteProfileOnAuthFailure.Text = "Delete profile on auth failure";
+			this.chkDeleteProfileOnAuthFailure.UseVisualStyleBackColor = true;
+			//
+			// btnConnectEnterprise
+			//
+			this.btnConnectEnterprise.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.btnConnectEnterprise.Location = new System.Drawing.Point(513, 70);
+			this.btnConnectEnterprise.Name = "btnConnectEnterprise";
+			this.btnConnectEnterprise.Size = new System.Drawing.Size(162, 26);
+			this.btnConnectEnterprise.TabIndex = 30;
+			this.btnConnectEnterprise.Text = "Connect Enterprise...";
+			this.btnConnectEnterprise.UseVisualStyleBackColor = true;
+			this.btnConnectEnterprise.Click += new System.EventHandler(this.btnConnectEnterprise_Click);
 			//
 			// lvNetworks
-			//
-			this.lvNetworks.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+			// 
+			this.lvNetworks.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.lvNetworks.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.colSsid,
@@ -149,7 +173,7 @@ namespace DHWifiClientSample {
 			this.lvNetworks.Location = new System.Drawing.Point(12, 98);
 			this.lvNetworks.MultiSelect = false;
 			this.lvNetworks.Name = "lvNetworks";
-			this.lvNetworks.Size = new System.Drawing.Size(663, 293);
+			this.lvNetworks.Size = new System.Drawing.Size(663, 207);
 			this.lvNetworks.TabIndex = 4;
 			this.lvNetworks.UseCompatibleStateImageBehavior = false;
 			this.lvNetworks.View = System.Windows.Forms.View.Details;
@@ -187,7 +211,7 @@ namespace DHWifiClientSample {
 			// btnConnect
 			// 
 			this.btnConnect.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.btnConnect.Location = new System.Drawing.Point(484, 397);
+			this.btnConnect.Location = new System.Drawing.Point(489, 308);
 			this.btnConnect.Name = "btnConnect";
 			this.btnConnect.Size = new System.Drawing.Size(90, 26);
 			this.btnConnect.TabIndex = 7;
@@ -195,10 +219,21 @@ namespace DHWifiClientSample {
 			this.btnConnect.UseVisualStyleBackColor = true;
 			this.btnConnect.Click += new System.EventHandler(this.btnConnect_Click);
 			// 
+			// btnReconnectSaved
+			// 
+			this.btnReconnectSaved.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.btnReconnectSaved.Location = new System.Drawing.Point(323, 308);
+			this.btnReconnectSaved.Name = "btnReconnectSaved";
+			this.btnReconnectSaved.Size = new System.Drawing.Size(160, 26);
+			this.btnReconnectSaved.TabIndex = 28;
+			this.btnReconnectSaved.Text = "Reconnect (Saved Profile)";
+			this.btnReconnectSaved.UseVisualStyleBackColor = true;
+			this.btnReconnectSaved.Click += new System.EventHandler(this.btnReconnectSaved_Click);
+			// 
 			// btnDisconnect
 			// 
 			this.btnDisconnect.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.btnDisconnect.Location = new System.Drawing.Point(584, 397);
+			this.btnDisconnect.Location = new System.Drawing.Point(585, 308);
 			this.btnDisconnect.Name = "btnDisconnect";
 			this.btnDisconnect.Size = new System.Drawing.Size(90, 26);
 			this.btnDisconnect.TabIndex = 8;
@@ -208,9 +243,9 @@ namespace DHWifiClientSample {
 			// 
 			// btnHiddenNetwork
 			// 
-			this.btnHiddenNetwork.Location = new System.Drawing.Point(12, 397);
+			this.btnHiddenNetwork.Location = new System.Drawing.Point(12, 308);
 			this.btnHiddenNetwork.Name = "btnHiddenNetwork";
-			this.btnHiddenNetwork.Size = new System.Drawing.Size(150, 26);
+			this.btnHiddenNetwork.Size = new System.Drawing.Size(119, 26);
 			this.btnHiddenNetwork.TabIndex = 5;
 			this.btnHiddenNetwork.Text = "Hidden Network...";
 			this.btnHiddenNetwork.UseVisualStyleBackColor = true;
@@ -219,9 +254,9 @@ namespace DHWifiClientSample {
 			// btnDeleteProfile
 			// 
 			this.btnDeleteProfile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.btnDeleteProfile.Location = new System.Drawing.Point(364, 397);
+			this.btnDeleteProfile.Location = new System.Drawing.Point(223, 308);
 			this.btnDeleteProfile.Name = "btnDeleteProfile";
-			this.btnDeleteProfile.Size = new System.Drawing.Size(110, 26);
+			this.btnDeleteProfile.Size = new System.Drawing.Size(94, 26);
 			this.btnDeleteProfile.TabIndex = 6;
 			this.btnDeleteProfile.Text = "Delete Profile";
 			this.btnDeleteProfile.UseVisualStyleBackColor = true;
@@ -230,7 +265,7 @@ namespace DHWifiClientSample {
 			// lblStatus
 			// 
 			this.lblStatus.AutoSize = true;
-			this.lblStatus.Location = new System.Drawing.Point(12, 435);
+			this.lblStatus.Location = new System.Drawing.Point(12, 346);
 			this.lblStatus.Name = "lblStatus";
 			this.lblStatus.Size = new System.Drawing.Size(46, 13);
 			this.lblStatus.TabIndex = 14;
@@ -242,7 +277,7 @@ namespace DHWifiClientSample {
 			this.chkFileLog.AutoSize = true;
 			this.chkFileLog.Checked = true;
 			this.chkFileLog.CheckState = System.Windows.Forms.CheckState.Checked;
-			this.chkFileLog.Location = new System.Drawing.Point(572, 432);
+			this.chkFileLog.Location = new System.Drawing.Point(572, 342);
 			this.chkFileLog.Name = "chkFileLog";
 			this.chkFileLog.Size = new System.Drawing.Size(103, 17);
 			this.chkFileLog.TabIndex = 9;
@@ -256,12 +291,12 @@ namespace DHWifiClientSample {
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.txtLog.BackColor = System.Drawing.SystemColors.Window;
-			this.txtLog.Location = new System.Drawing.Point(12, 453);
+			this.txtLog.Location = new System.Drawing.Point(12, 365);
 			this.txtLog.Multiline = true;
 			this.txtLog.Name = "txtLog";
 			this.txtLog.ReadOnly = true;
 			this.txtLog.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-			this.txtLog.Size = new System.Drawing.Size(663, 130);
+			this.txtLog.Size = new System.Drawing.Size(663, 79);
 			this.txtLog.TabIndex = 10;
 			this.txtLog.WordWrap = false;
 			// 
@@ -269,16 +304,19 @@ namespace DHWifiClientSample {
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(687, 595);
+			this.ClientSize = new System.Drawing.Size(687, 456);
 			this.Controls.Add(this.txtLog);
 			this.Controls.Add(this.chkFileLog);
 			this.Controls.Add(this.lblStatus);
 			this.Controls.Add(this.btnDeleteProfile);
 			this.Controls.Add(this.btnHiddenNetwork);
 			this.Controls.Add(this.btnDisconnect);
+			this.Controls.Add(this.btnReconnectSaved);
 			this.Controls.Add(this.btnConnect);
 			this.Controls.Add(this.lvNetworks);
-			this.Controls.Add(this.chkIncludeEmptySsids);
+			this.Controls.Add(this.btnConnectEnterprise);
+			this.Controls.Add(this.chkDeleteProfileOnAuthFailure);
+			this.Controls.Add(this.chkMergeDuplicateBssids);
 			this.Controls.Add(this.btnScan);
 			this.Controls.Add(this.btnRadioToggle);
 			this.Controls.Add(this.lblRadioState);
@@ -286,7 +324,7 @@ namespace DHWifiClientSample {
 			this.Controls.Add(this.lblAdapter);
 			this.Controls.Add(this.lblWifiCheckResult);
 			this.Controls.Add(this.btnCheckWifi);
-			this.MinimumSize = new System.Drawing.Size(560, 477);
+			this.MinimumSize = new System.Drawing.Size(640, 480);
 			this.Name = "FrmMain";
 			this.Text = "DHWifiClient Sample";
 			this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.FrmMain_FormClosed);
@@ -305,7 +343,9 @@ namespace DHWifiClientSample {
 		private System.Windows.Forms.Label lblRadioState;
 		private System.Windows.Forms.Button btnRadioToggle;
 		private System.Windows.Forms.Button btnScan;
-		private System.Windows.Forms.CheckBox chkIncludeEmptySsids;
+		private System.Windows.Forms.CheckBox chkMergeDuplicateBssids;
+		private System.Windows.Forms.CheckBox chkDeleteProfileOnAuthFailure;
+		private System.Windows.Forms.Button btnConnectEnterprise;
 		private System.Windows.Forms.ListView lvNetworks;
 		private System.Windows.Forms.ColumnHeader colSsid;
 		private System.Windows.Forms.ColumnHeader colSignal;
@@ -314,6 +354,7 @@ namespace DHWifiClientSample {
 		private System.Windows.Forms.ColumnHeader colBssid;
 		private System.Windows.Forms.ColumnHeader colStatus;
 		private System.Windows.Forms.Button btnConnect;
+		private System.Windows.Forms.Button btnReconnectSaved;
 		private System.Windows.Forms.Button btnDisconnect;
 		private System.Windows.Forms.Button btnHiddenNetwork;
 		private System.Windows.Forms.Button btnDeleteProfile;

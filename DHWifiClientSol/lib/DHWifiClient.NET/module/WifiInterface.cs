@@ -40,20 +40,20 @@ namespace DHWifiClient.NET.module
         }
 
         /// <summary>
-        /// Gets the list of currently visible WiFi networks.
+        /// Gets the list of currently visible WiFi networks. Each entry's <see cref="WifiNetwork.Bssids"/>
+        /// is always resolved via a separate WlanGetNetworkBssList query per entry, since callers need it
+        /// to tell apart multiple physical APs that share the same (or, for hidden networks, an empty)
+        /// SSID.
         /// </summary>
-        /// <param name="includeBssids">
-        /// When true, also resolves each entry's <see cref="WifiNetwork.Bssids"/> via a separate
-        /// WlanGetNetworkBssList query per entry. Off by default, since it costs one extra native call
-        /// per scanned network; enable it when the caller needs to tell apart multiple physical APs that
-        /// share the same (or, for hidden networks, an empty) SSID.
+        /// <param name="mergeDuplicateBssids">
+        /// When true, collapses entries that share the same SSID and resolved BSSID(s) down to a single
+        /// row. This works around a driver/scan-cache quirk where WlanGetAvailableNetworkList can report
+        /// the same physical AP more than once in a single call even when neither duplicate is the
+        /// currently connected network. Entries whose BSSID could not be resolved are left untouched
+        /// (never merged with each other), since an empty BSSID list is not evidence they are the same
+        /// AP. Off by default.
         /// </param>
-        /// <param name="includeEmptySsids">
-        /// When false, entries whose SSID could not be decoded (e.g. non-broadcast/hidden networks with
-        /// no saved profile) are excluded from the result. True by default, matching the raw
-        /// WlanGetAvailableNetworkList output.
-        /// </param>
-        public IReadOnlyList<WifiNetwork> GetAvailableNetworks(bool includeBssids = false, bool includeEmptySsids = true)
+        public IReadOnlyList<WifiNetwork> GetAvailableNetworks(bool mergeDuplicateBssids = false)
         {
             var gGuid = Id;
             int nResult = WlanNativeMethods.WlanGetAvailableNetworkList(
@@ -73,10 +73,6 @@ namespace DHWifiClient.NET.module
                     var oItem = Marshal.PtrToStructure<WlanAvailableNetwork>(pItemPtr);
 
                     string strSsid = DecodeSsid(oItem.Dot11Ssid);
-                    if (!includeEmptySsids && string.IsNullOrEmpty(strSsid))
-                    {
-                        continue;
-                    }
 
                     listNetworks.Add(new WifiNetwork
                     {
@@ -88,10 +84,8 @@ namespace DHWifiClient.NET.module
                         IsConnected = (oItem.Flags & WlanAvailableNetworkFlags.Connected) != 0,
                         HasProfile = (oItem.Flags & WlanAvailableNetworkFlags.HasProfile) != 0,
                         SignalQuality = oItem.SignalQuality,
-                        Bssids = includeBssids
-                            ? (IReadOnlyList<string>)QueryBssids(oItem.Dot11Ssid, oItem.Dot11BssType, oItem.SecurityEnabled,
-                                Math.Max(1, (int)oItem.NumberOfBssids))
-                            : System.Array.Empty<string>(),
+                        Bssids = QueryBssids(oItem.Dot11Ssid, oItem.Dot11BssType, oItem.SecurityEnabled,
+                            Math.Max(1, (int)oItem.NumberOfBssids)),
                     });
                 }
             }
@@ -100,8 +94,44 @@ namespace DHWifiClient.NET.module
                 WlanNativeMethods.WlanFreeMemory(pListPtr);
             }
 
-            Logger.Debug($"[{Name}] Found {listNetworks.Count} available network(s)");
-            return listNetworks;
+            var listResult = mergeDuplicateBssids ? MergeDuplicateBssids(listNetworks) : listNetworks;
+
+            Logger.Debug($"[{Name}] Found {listResult.Count} available network(s)");
+            return listResult;
+        }
+
+        /// <summary>
+        /// Collapses entries within the same SSID that resolved to the exact same set of BSSIDs down to
+        /// one entry, keeping the first occurrence. Entries with no resolved BSSID are passed through
+        /// unmerged, since an empty BSSID list is not evidence two entries are the same physical AP.
+        /// </summary>
+        private static List<WifiNetwork> MergeDuplicateBssids(List<WifiNetwork> networks)
+        {
+            var listResult = new List<WifiNetwork>(networks.Count);
+            var dictSeenBssidKeysBySsid = new Dictionary<string, HashSet<string>>();
+
+            foreach (var oNetwork in networks)
+            {
+                if (oNetwork.Bssids.Count == 0)
+                {
+                    listResult.Add(oNetwork);
+                    continue;
+                }
+
+                if (!dictSeenBssidKeysBySsid.TryGetValue(oNetwork.Ssid, out var setSeenBssidKeys))
+                {
+                    setSeenBssidKeys = new HashSet<string>();
+                    dictSeenBssidKeysBySsid[oNetwork.Ssid] = setSeenBssidKeys;
+                }
+
+                string strBssidKey = string.Join(",", oNetwork.Bssids);
+                if (setSeenBssidKeys.Add(strBssidKey))
+                {
+                    listResult.Add(oNetwork);
+                }
+            }
+
+            return listResult;
         }
 
         /// <summary>Connects to the specified SSID. If <paramref name="password"/> is null, the network is treated as open.</summary>
@@ -147,6 +177,12 @@ namespace DHWifiClient.NET.module
             switch (network.Authentication)
             {
                 case WifiAuthentication.Open:
+                    if (network.Cipher == WifiCipherAlgorithm.WEP)
+                    {
+                        ConnectWep(network.Ssid, password, WifiWepAuthentication.Open);
+                        return;
+                    }
+
                     Connect(network.Ssid);
                     return;
 
@@ -184,6 +220,25 @@ namespace DHWifiClient.NET.module
                     throw new NotSupportedException(
                         $"[{Name}] {network.Ssid} uses an unsupported authentication method: {network.Authentication}");
             }
+        }
+
+        /// <summary>
+        /// Reconnects using an already-saved profile by name (see <see cref="WifiNetwork.HasProfile"/>),
+        /// without rebuilding or overwriting the profile's XML. Use this for a reconnect where the caller
+        /// has no new password to supply; calling <see cref="Connect(WifiNetwork, string)"/> instead would
+        /// require the password again and would overwrite the existing saved profile with one derived from
+        /// the current scan result.
+        /// </summary>
+        public void ConnectSavedProfile(string ssid)
+        {
+            if (string.IsNullOrEmpty(ssid))
+            {
+                throw new ArgumentException("ssid is required", nameof(ssid));
+            }
+
+            Logger.Info($"[{Name}] Connect attempt using saved profile: SSID={ssid}");
+            ConnectProfile(ssid);
+            Logger.Info($"[{Name}] Connect request succeeded (whether the connection actually completes must be confirmed via a state change): SSID={ssid}");
         }
 
         /// <summary>Connects to a WPA/WPA2-Personal (PSK) network with an explicit protocol and cipher combination.</summary>
@@ -244,7 +299,11 @@ namespace DHWifiClient.NET.module
         /// Connects to a WPA2-Enterprise (802.1X) network using PEAP-MSCHAPv2 (username/password against the RADIUS/AD backend).
         /// The server certificate is validated using the system trust store; no client certificate is required.
         /// </summary>
-        public void ConnectEnterprise(string ssid, string username, string password, string domain = null)
+        /// <param name="serverNames">Optional semicolon-separated list of expected RADIUS server certificate subject names.</param>
+        /// <param name="trustedRootCaThumbprint">Optional SHA1 thumbprint (hex, no separators) of the trusted Root CA that issued the RADIUS server certificate. Providing this lets Windows validate the server certificate without an interactive trust prompt.</param>
+        /// <param name="disableUserPromptForServerValidation">When true, suppresses the "Continue connecting?" prompt. Only meaningful together with <paramref name="trustedRootCaThumbprint"/>.</param>
+        public void ConnectEnterprise(string ssid, string username, string password, string domain = null,
+            string serverNames = "", string trustedRootCaThumbprint = null, bool disableUserPromptForServerValidation = false)
         {
             if (string.IsNullOrEmpty(ssid))
             {
@@ -256,16 +315,32 @@ namespace DHWifiClient.NET.module
                 throw new ArgumentException("username is required", nameof(username));
             }
 
+            if (string.IsNullOrEmpty(password))
+            {
+                throw new ArgumentException("password is required", nameof(password));
+            }
+
             Logger.Info($"[{Name}] Enterprise connect attempt (PEAP-MSCHAPv2): SSID={ssid}, User={username}"); // Never log the password
 
-            string strProfileXml = WlanProfileXml.CreateWpa2EnterprisePeap(ssid);
+            string strProfileXml = WlanProfileXml.CreateWpa2EnterprisePeap(ssid, serverNames, trustedRootCaThumbprint, disableUserPromptForServerValidation);
+            Logger.Debug($"[{Name}] Enterprise profile XML:{System.Environment.NewLine}{strProfileXml}");
             SetProfile(strProfileXml);
 
             var gGuid = Id;
             string strEapUserDataXml = WlanProfileXml.CreatePeapMsChapV2UserData(username, password, domain);
             int nEapResult = WlanNativeMethods.WlanSetProfileEapXmlUserData(
                 m_pClientHandle, ref gGuid, ssid, 0, strEapUserDataXml, IntPtr.Zero);
-            WifiException.ThrowIfError(nEapResult);
+            if (nEapResult != 0)
+            {
+                string strRedactedEapXml = WlanProfileXml.CreatePeapMsChapV2UserData(username, "********", domain);
+                Logger.Debug($"[{Name}] Enterprise EAP user-data XML (password redacted):{System.Environment.NewLine}{strRedactedEapXml}");
+
+                // WlanSetProfileEapXmlUserData can fail (e.g. ERROR_BAD_PROFILE) if a stale profile
+                // with the same name already exists from a previous attempt. Falling through to
+                // ConnectProfile lets Windows fall back to its own interactive credential prompt
+                // instead of failing outright.
+                Logger.Info($"[{Name}] Enterprise EAP user-data pre-injection failed (code={nEapResult}); proceeding to connect without it, Windows may prompt for credentials: SSID={ssid}");
+            }
 
             ConnectProfile(ssid);
             Logger.Info($"[{Name}] Enterprise connect request succeeded (whether the connection actually completes must be confirmed via a state change): SSID={ssid}");

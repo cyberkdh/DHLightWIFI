@@ -119,8 +119,26 @@ $@"<?xml version=""1.0""?>
         /// The server certificate is validated against the system trust store; no client certificate is required.
         /// Credentials are supplied separately via <see cref="CreatePeapMsChapV2UserData"/> and WlanSetProfileEapXmlUserData.
         /// </summary>
-        public static string CreateWpa2EnterprisePeap(string ssid)
+        /// <param name="ssid">Target network SSID.</param>
+        /// <param name="serverNames">Optional semicolon-separated list of expected RADIUS server certificate subject names (ServerNames element). Empty means no restriction.</param>
+        /// <param name="trustedRootCaThumbprint">Optional SHA1 thumbprint (hex, no separators) of the trusted Root CA certificate that issued the RADIUS server certificate. When set, Windows can validate the server certificate without prompting the user.</param>
+        /// <param name="disableUserPromptForServerValidation">When true, Windows will not show the "Continue connecting?" server-certificate-trust prompt. Only set this to true when <paramref name="trustedRootCaThumbprint"/> is also provided, otherwise the connection has no way to establish trust.</param>
+        public static string CreateWpa2EnterprisePeap(string ssid, string serverNames = "", string trustedRootCaThumbprint = null, bool disableUserPromptForServerValidation = false)
         {
+            string strServerValidationBlock =
+$@"                                    <ServerValidation>
+                                        <DisableUserPromptForServerValidation>{(disableUserPromptForServerValidation ? "true" : "false")}</DisableUserPromptForServerValidation>
+                                        <ServerNames>{SecurityElement.Escape(serverNames ?? string.Empty)}</ServerNames>";
+
+            if (!string.IsNullOrEmpty(trustedRootCaThumbprint))
+            {
+                strServerValidationBlock += $@"
+                                        <TrustedRootCA>{trustedRootCaThumbprint}</TrustedRootCA>";
+            }
+
+            strServerValidationBlock += @"
+                                    </ServerValidation>";
+
             return
 $@"<?xml version=""1.0""?>
 <WLANProfile xmlns=""http://www.microsoft.com/networking/WLAN/profile/v1"">
@@ -140,7 +158,6 @@ $@"<?xml version=""1.0""?>
                 <useOneX>true</useOneX>
             </authEncryption>
             <OneX xmlns=""http://www.microsoft.com/networking/OneX/v1"">
-                <cacheUserData>true</cacheUserData>
                 <authMode>user</authMode>
                 <EAPConfig>
                     <EapHostConfig xmlns=""http://www.microsoft.com/provisioning/EapHostConfig"">
@@ -154,10 +171,7 @@ $@"<?xml version=""1.0""?>
                             <Eap xmlns=""http://www.microsoft.com/provisioning/BaseEapConnectionPropertiesV1"">
                                 <Type>25</Type>
                                 <EapType xmlns=""http://www.microsoft.com/provisioning/MsPeapConnectionPropertiesV1"">
-                                    <ServerValidation>
-                                        <DisableUserPromptForServerValidation>false</DisableUserPromptForServerValidation>
-                                        <ServerNames></ServerNames>
-                                    </ServerValidation>
+{strServerValidationBlock}
                                     <FastReconnect>true</FastReconnect>
                                     <InnerEapOptional>false</InnerEapOptional>
                                     <Eap xmlns=""http://www.microsoft.com/provisioning/BaseEapConnectionPropertiesV1"">
@@ -168,10 +182,7 @@ $@"<?xml version=""1.0""?>
                                     </Eap>
                                     <EnableQuarantineChecks>false</EnableQuarantineChecks>
                                     <RequireCryptoBinding>false</RequireCryptoBinding>
-                                    <PeapExtensions>
-                                        <PerformServerValidation xmlns=""http://www.microsoft.com/provisioning/MsPeapConnectionPropertiesV2"">true</PerformServerValidation>
-                                        <AcceptServerName xmlns=""http://www.microsoft.com/provisioning/MsPeapConnectionPropertiesV2"">false</AcceptServerName>
-                                    </PeapExtensions>
+                                    <PeapExtensions></PeapExtensions>
                                 </EapType>
                             </Eap>
                         </Config>
@@ -189,25 +200,27 @@ $@"<?xml version=""1.0""?>
         /// </summary>
         public static string CreatePeapMsChapV2UserData(string username, string password, string domain)
         {
-            string strDomainElement = string.IsNullOrEmpty(domain)
-                ? string.Empty
-                : $"<LogonDomain>{SecurityElement.Escape(domain)}</LogonDomain>";
-
             return
-$@"<?xml version=""1.0"" encoding=""utf-8""?>
+$@"<?xml version=""1.0""?>
 <EapHostUserCredentials xmlns=""http://www.microsoft.com/provisioning/EapHostUserCredentials"" xmlns:eapCommon=""http://www.microsoft.com/provisioning/EapCommon"" xmlns:baseEap=""http://www.microsoft.com/provisioning/BaseEapMethodUserCredentials"">
     <EapMethod>
         <eapCommon:Type>25</eapCommon:Type>
         <eapCommon:AuthorId>0</eapCommon:AuthorId>
     </EapMethod>
-    <Credentials xmlns:eapUser=""http://www.microsoft.com/provisioning/EapUserPropertiesV1"" xmlns:baseEap=""http://www.microsoft.com/provisioning/BaseEapUserPropertiesV1"" xmlns=""http://www.microsoft.com/provisioning/MsPeapUserPropertiesV1"">
+    <Credentials xmlns:eapUser=""http://www.microsoft.com/provisioning/EapUserPropertiesV1"" xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:baseEap=""http://www.microsoft.com/provisioning/BaseEapUserPropertiesV1"" xmlns:MsPeap=""http://www.microsoft.com/provisioning/MsPeapUserPropertiesV1"" xmlns:MsChapV2=""http://www.microsoft.com/provisioning/MsChapV2UserPropertiesV1"">
         <baseEap:Eap>
-            <baseEap:Type>26</baseEap:Type>
-            <baseEap:EapType xmlns:eapUser=""http://www.microsoft.com/provisioning/EapUserPropertiesV1"" xmlns=""http://www.microsoft.com/provisioning/MsChapV2UserPropertiesV1"">
-                <Username>{SecurityElement.Escape(username)}</Username>
-                <Password>{SecurityElement.Escape(password)}</Password>
-                {strDomainElement}
-            </baseEap:EapType>
+            <baseEap:Type>25</baseEap:Type>
+            <MsPeap:EapType>
+                <MsPeap:RoutingIdentity>{SecurityElement.Escape(username)}</MsPeap:RoutingIdentity>
+                <baseEap:Eap>
+                    <baseEap:Type>26</baseEap:Type>
+                    <MsChapV2:EapType>
+                        <MsChapV2:Username>{SecurityElement.Escape(username)}</MsChapV2:Username>
+                        <MsChapV2:Password>{SecurityElement.Escape(password)}</MsChapV2:Password>
+                        <MsChapV2:LogonDomain>{SecurityElement.Escape(domain ?? string.Empty)}</MsChapV2:LogonDomain>
+                    </MsChapV2:EapType>
+                </baseEap:Eap>
+            </MsPeap:EapType>
         </baseEap:Eap>
     </Credentials>
 </EapHostUserCredentials>";

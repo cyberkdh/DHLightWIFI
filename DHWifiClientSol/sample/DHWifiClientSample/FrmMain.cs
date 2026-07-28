@@ -5,6 +5,7 @@
 //	History			:
 //	Copyrights		: Copyright (C)CYBERKDH@HOTMAIL.COM. All Rights Reserved.
 //////////////////////////////////////////////////////////////////////////////////////////////////
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -21,6 +22,8 @@ namespace DHWifiClientSample
         private List<WifiInterface> m_listInterfaces = new List<WifiInterface>();
         private Timer m_oScanCompleteTimer;
         private TextBoxLogWriter m_oLogWriter;
+        private bool m_bUserInitiatedScan;
+        private string m_strLastConnectAttemptSsid;
 
         private WifiInterface CurrentInterface => cmbAdapter.SelectedItem as WifiInterface;
 
@@ -126,7 +129,12 @@ namespace DHWifiClientSample
                 case WifiNotificationType.ScanComplete:
                     m_oScanCompleteTimer?.Stop();
                     btnScan.Enabled = true;
-                    RefreshNetworkList();
+                    // Windows also raises this notification for scans it triggers on its own (not just
+                    // the Scan button), so only overwrite lblStatus with the "Found N network(s)" summary
+                    // when the user actually asked for a scan - otherwise a more important status (e.g.
+                    // a connect failure) gets silently wiped out by an unrelated background scan.
+                    RefreshNetworkList(announceCount: m_bUserInitiatedScan);
+                    m_bUserInitiatedScan = false;
                     break;
 
                 case WifiNotificationType.ScanFailed:
@@ -136,8 +144,21 @@ namespace DHWifiClientSample
                     break;
 
                 case WifiNotificationType.ConnectionCompleted:
-                    RefreshNetworkList(announceCount: false);
-                    lblStatus.Text = "Status: Connected";
+                    {
+                        // The native WLAN API can raise this notification even when the connection did
+                        // not actually succeed (e.g. a wrong password can still be followed by
+                        // ConnectionCompleted - see doc/discuss/0050), so trust the freshly queried
+                        // IsConnected state rather than assuming this notification alone means success.
+                        bool? bConnected = RefreshNetworkList(announceCount: false);
+                        if (bConnected == true)
+                        {
+                            lblStatus.Text = "Status: Connected";
+                        }
+                        else if (bConnected == false)
+                        {
+                            lblStatus.Text = "Status: Connect attempt failed";
+                        }
+                    }
                     break;
 
                 case WifiNotificationType.ConnectionAttemptFailed:
@@ -148,6 +169,25 @@ namespace DHWifiClientSample
                     // ConnectionCompleted notification if the driver/AP falls back to a cached PMKSA
                     // (see doc/discuss/0028) rather than fully re-validating the current profile.
                     MessageBox.Show(this, "Connection attempt failed.", "Connect", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                    // Optional (opt-in): WlanSetProfile persists a profile as soon as its XML is
+                    // well-formed, regardless of whether the password/protocol actually authenticates
+                    // (see doc/discuss/0047), so a failed attempt still leaves a bad profile behind
+                    // unless the user asks to clean it up here.
+                    if (chkDeleteProfileOnAuthFailure.Checked && !string.IsNullOrEmpty(m_strLastConnectAttemptSsid))
+                    {
+                        try
+                        {
+                            oIface.DeleteProfile(m_strLastConnectAttemptSsid);
+                            Logger.Info($"[{oIface.Name}] Deleted profile after auth failure: SSID={m_strLastConnectAttemptSsid}");
+                            RefreshNetworkList(announceCount: false);
+                            lblStatus.Text = $"Status: Connect attempt failed (profile for {m_strLastConnectAttemptSsid} deleted)";
+                        }
+                        catch (Exception oEx)
+                        {
+                            Logger.Error($"Delete profile after auth failure failed: SSID={m_strLastConnectAttemptSsid}", oEx);
+                        }
+                    }
                     break;
 
                 case WifiNotificationType.Disconnected:
@@ -163,11 +203,14 @@ namespace DHWifiClientSample
             btnRadioToggle.Enabled = enabled;
             btnScan.Enabled = enabled;
             btnConnect.Enabled = enabled;
+            btnReconnectSaved.Enabled = enabled;
             btnDisconnect.Enabled = enabled;
             btnHiddenNetwork.Enabled = enabled;
+            btnConnectEnterprise.Enabled = enabled;
             btnDeleteProfile.Enabled = enabled;
             lvNetworks.Enabled = enabled;
-            chkIncludeEmptySsids.Enabled = enabled;
+            chkMergeDuplicateBssids.Enabled = enabled;
+            chkDeleteProfileOnAuthFailure.Enabled = enabled;
         }
 
         private void cmbAdapter_SelectedIndexChanged(object sender, EventArgs e)
@@ -176,7 +219,7 @@ namespace DHWifiClientSample
             RefreshNetworkList();
         }
 
-        private void chkIncludeEmptySsids_CheckedChanged(object sender, EventArgs e)
+        private void chkMergeDuplicateBssids_CheckedChanged(object sender, EventArgs e)
         {
             RefreshNetworkList(announceCount: false);
         }
@@ -223,7 +266,15 @@ namespace DHWifiClientSample
         /// when the caller already set a more specific status message (e.g. a connect/delete result)
         /// that this refresh must not clobber.
         /// </param>
-        private void RefreshNetworkList(bool announceCount = true)
+        /// <returns>
+        /// Whether any network in the freshly queried list is actually connected (per
+        /// <see cref="WifiNetwork.IsConnected"/>), or null if the query itself failed (in which case
+        /// lblStatus has already been set to an error message). Callers that report a connection
+        /// outcome (e.g. on ConnectionCompleted) should trust this return value rather than assuming
+        /// the notification that triggered the refresh means the connection actually succeeded - the
+        /// native WLAN API can raise a completion notification even for a failed attempt (see 0050).
+        /// </returns>
+        private bool? RefreshNetworkList(bool announceCount = true)
         {
             var oIface = CurrentInterface;
 
@@ -231,15 +282,13 @@ namespace DHWifiClientSample
             {
                 lvNetworks.Items.Clear();
                 Logger.Debug("RefreshNetworkList skipped: no adapter is currently selected");
-                return;
+                return null;
             }
 
             try
             {
-                // BSSID resolution is enabled here so that duplicate/blank-SSID rows (e.g. hidden
-                // networks) can be told apart by their actual AP MAC address; see the Bssids= entries
-                // in the debug log below.
-                var listNetworks = oIface.GetAvailableNetworks(includeBssids: true, includeEmptySsids: chkIncludeEmptySsids.Checked);
+                var listNetworks = oIface.GetAvailableNetworks(
+                    mergeDuplicateBssids: chkMergeDuplicateBssids.Checked);
                 Logger.Debug($"[{oIface.Name}] Network list: [{string.Join("\r\n", listNetworks.Select(n => $"{n.Ssid}({n.Authentication}/{n.Cipher}) Bssids=[{string.Join(",", n.Bssids)}]"))}]");
 
                 // WlanGetAvailableNetworkList's HasProfile flag reflects wlansvc's cached scan
@@ -304,6 +353,8 @@ namespace DHWifiClientSample
                 {
                     lblStatus.Text = $"Status: Found {listNetworks.Count} network(s)";
                 }
+
+                return listNetworks.Any(n => n.IsConnected);
             }
             catch (Exception oEx)
             {
@@ -313,6 +364,7 @@ namespace DHWifiClientSample
                 // would be misleading, so clear it rather than leaving old rows on screen.
                 lvNetworks.Items.Clear();
                 lblStatus.Text = "Status: Failed to query network list";
+                return null;
             }
         }
 
@@ -400,12 +452,14 @@ namespace DHWifiClientSample
             {
                 btnScan.Enabled = false;
                 lblStatus.Text = "Status: Scanning...";
+                m_bUserInitiatedScan = true;
                 oIface.Scan();
             }
             catch (Exception oEx)
             {
                 Logger.Error("Scan request failed", oEx);
                 btnScan.Enabled = true;
+                m_bUserInitiatedScan = false;
                 lblStatus.Text = "Status: Scan request failed";
                 return;
             }
@@ -417,7 +471,8 @@ namespace DHWifiClientSample
             {
                 m_oScanCompleteTimer.Stop();
                 btnScan.Enabled = true;
-                RefreshNetworkList();
+                RefreshNetworkList(announceCount: m_bUserInitiatedScan);
+                m_bUserInitiatedScan = false;
             };
             m_oScanCompleteTimer.Start();
         }
@@ -435,7 +490,13 @@ namespace DHWifiClientSample
             var oNetwork = (WifiNetwork)lvNetworks.SelectedItems[0].Tag;
             string strPassword = null;
 
-            if (oNetwork.SecurityEnabled && !oNetwork.HasProfile)
+            // Connect (button or list double-click) always builds a fresh profile from the entered
+            // password and overwrites whatever is currently saved (WlanSetProfile persists a profile as
+            // soon as its XML is well-formed, regardless of whether the password/protocol actually
+            // authenticates - so a bad saved profile is only fixed by supplying a correct password
+            // again here). Use "Reconnect (Saved Profile)" instead for a no-prompt reconnect that
+            // reuses an existing saved profile as-is.
+            if (oNetwork.SecurityEnabled)
             {
                 using (var oDlg = new PasswordDialog(oNetwork.Ssid))
                 {
@@ -451,12 +512,47 @@ namespace DHWifiClientSample
             try
             {
                 lblStatus.Text = $"Status: Connecting to {oNetwork.Ssid}...";
-                oIface.Connect(oNetwork.Ssid, strPassword);
+                m_strLastConnectAttemptSsid = oNetwork.Ssid;
+                oIface.Connect(oNetwork, strPassword);
                 lblStatus.Text = $"Status: Connect request for {oNetwork.Ssid} completed";
             }
             catch (Exception oEx)
             {
                 Logger.Error($"Connect failed: SSID={oNetwork.Ssid}", oEx);
+                lblStatus.Text = "Status: Connect failed";
+                MessageBox.Show(this, "Unable to connect to the network: " + oEx.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void btnReconnectSaved_Click(object sender, EventArgs e)
+        {
+            var oIface = CurrentInterface;
+            if (oIface == null || lvNetworks.SelectedItems.Count == 0)
+            {
+                MessageBox.Show(this, "Please select a network from the list to connect to.", "Notice",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var oNetwork = (WifiNetwork)lvNetworks.SelectedItems[0].Tag;
+            if (!oNetwork.HasProfile)
+            {
+                MessageBox.Show(this, "There is no saved profile for this network yet. Use Connect first.",
+                    "Notice", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            try
+            {
+                lblStatus.Text = $"Status: Connecting to {oNetwork.Ssid} (saved profile)...";
+                m_strLastConnectAttemptSsid = oNetwork.Ssid;
+                oIface.ConnectSavedProfile(oNetwork.Ssid);
+                lblStatus.Text = $"Status: Connect request for {oNetwork.Ssid} completed";
+            }
+            catch (Exception oEx)
+            {
+                Logger.Error($"Connect (saved profile) failed: SSID={oNetwork.Ssid}", oEx);
                 lblStatus.Text = "Status: Connect failed";
                 MessageBox.Show(this, "Unable to connect to the network: " + oEx.Message, "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -481,6 +577,7 @@ namespace DHWifiClientSample
                 try
                 {
                     lblStatus.Text = $"Status: Connecting to {oDlg.Ssid}...";
+                    m_strLastConnectAttemptSsid = oDlg.Ssid;
                     Logger.Info($"[{oIface.Name}] Hidden network connect attempt: SSID={oDlg.Ssid}, Security={oDlg.SecurityType}"); // Never log the password
 
                     switch (oDlg.SecurityType)
@@ -510,6 +607,47 @@ namespace DHWifiClientSample
                     Logger.Error($"Hidden network connect failed: SSID={oDlg.Ssid}", oEx);
                     lblStatus.Text = "Status: Connect failed";
                     MessageBox.Show(this, "Unable to connect to the hidden network: " + oEx.Message, "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void btnConnectEnterprise_Click(object sender, EventArgs e)
+        {
+            var oIface = CurrentInterface;
+            if (oIface == null)
+            {
+                return;
+            }
+
+            // Auto-detect Connect() rejects 802.1X Enterprise networks (WPA/RSNA/WPA3_ENT) and directs
+            // the caller to ConnectEnterprise instead (see WifiInterface.Connect), so this button is the
+            // sample's own entry point for that path - it is not reachable via the regular Connect button.
+            string strPreselectedSsid = lvNetworks.SelectedItems.Count > 0
+                ? ((WifiNetwork)lvNetworks.SelectedItems[0].Tag).Ssid
+                : string.Empty;
+
+            using (var oDlg = new EnterpriseCredentialsDialog(strPreselectedSsid))
+            {
+                if (oDlg.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                try
+                {
+                    lblStatus.Text = $"Status: Connecting to {oDlg.Ssid} (Enterprise)...";
+                    m_strLastConnectAttemptSsid = oDlg.Ssid;
+                    oIface.ConnectEnterprise(oDlg.Ssid, oDlg.Username, oDlg.Password, oDlg.Domain,
+                        trustedRootCaThumbprint: oDlg.TrustedRootCaThumbprint,
+                        disableUserPromptForServerValidation: oDlg.DisableUserPromptForServerValidation);
+                    lblStatus.Text = $"Status: Connect request for {oDlg.Ssid} completed";
+                }
+                catch (Exception oEx)
+                {
+                    Logger.Error($"Enterprise connect failed: SSID={oDlg.Ssid}", oEx);
+                    lblStatus.Text = "Status: Connect failed";
+                    MessageBox.Show(this, "Unable to connect to the Enterprise network: " + oEx.Message, "Error",
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
