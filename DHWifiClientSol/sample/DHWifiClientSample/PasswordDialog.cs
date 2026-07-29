@@ -3,7 +3,7 @@
 //	Author			: CYBERKDH
 //	Module			: PasswordDialog
 //	History			:
-//	Copyrights		: Copyright (C)CYBERKDH@HOTMAIL.COM. All Rights Reserved.
+//	Copyrights		: Copyright (C)CYBERKDH. Licensed under the MIT License.
 //////////////////////////////////////////////////////////////////////////////////////////////////
 using System.Windows.Forms;
 

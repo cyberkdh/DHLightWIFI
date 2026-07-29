@@ -3,7 +3,7 @@
 //	Author			: CYBERKDH
 //	Module			: WifiRadioState
 //	History			:
-//	Copyrights		: Copyright (C)CYBERKDH@HOTMAIL.COM. All Rights Reserved.
+//	Copyrights		: Copyright (C)CYBERKDH. Licensed under the MIT License.
 //////////////////////////////////////////////////////////////////////////////////////////////////
 namespace DHWifiClient.NET.module
 {

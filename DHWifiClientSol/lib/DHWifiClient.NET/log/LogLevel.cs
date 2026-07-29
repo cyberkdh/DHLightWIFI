@@ -3,7 +3,7 @@
 //	Author			: CYBERKDH
 //	Module			: LogLevel
 //	History			:
-//	Copyrights		: Copyright (C)CYBERKDH@HOTMAIL.COM. All Rights Reserved.
+//	Copyrights		: Copyright (C)CYBERKDH. Licensed under the MIT License.
 //////////////////////////////////////////////////////////////////////////////////////////////////
 namespace DHWifiClient.NET.log
 {
