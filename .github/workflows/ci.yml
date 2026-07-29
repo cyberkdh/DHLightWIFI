@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+
+      - name: Restore
+        run: msbuild DHWifiClientSol/DHWifiClientSol.sln /t:Restore /p:Configuration=Release /nologo /v:minimal
+        working-directory: .
+
+      - name: Build solution
+        run: msbuild DHWifiClientSol/DHWifiClientSol.sln /t:Build /p:Configuration=Release /nologo /v:minimal
+        working-directory: .
+
+      - name: Test
+        run: dotnet test DHWifiClientSol/test/DHWifiClient.NET.Tests/DHWifiClient.NET.Tests.csproj -c Release --nologo
+        working-directory: .
+
+      - name: Pack library
+        run: msbuild DHWifiClientSol/lib/DHWifiClient.NET/DHWifiClient.NET.csproj /t:Pack /p:Configuration=Release /nologo /v:minimal
+        working-directory: .
+
+      - name: Upload nupkg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: DHWifiClientSol/lib/DHWifiClient.NET/bin/Release/*.nupkg
