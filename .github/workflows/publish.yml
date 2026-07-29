@@ -33,12 +33,11 @@ jobs:
       - name: Pack
         run: msbuild DHWifiClientSol/lib/DHWifiClient.NET/DHWifiClient.NET.csproj /t:Pack /p:Configuration=Release /nologo /v:minimal
 
-      # TODO: nuget.org 사용자명(user)을 실제 nuget.org 프로필명으로 교체해야 함 (이메일 아님)
       - name: NuGet login (OIDC -> temporary API key)
         uses: NuGet/login@v1
         id: login
         with:
-          user: CHANGE_ME_NUGET_USERNAME
+          user: cyberkdh
 
       - name: Push to NuGet.org
         run: dotnet nuget push DHWifiClientSol/lib/DHWifiClient.NET/bin/Release/*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
