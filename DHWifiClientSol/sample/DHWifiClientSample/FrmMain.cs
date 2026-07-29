@@ -638,9 +638,20 @@ namespace DHWifiClientSample
                 {
                     lblStatus.Text = $"Status: Connecting to {oDlg.Ssid} (Enterprise)...";
                     m_strLastConnectAttemptSsid = oDlg.Ssid;
-                    oIface.ConnectEnterprise(oDlg.Ssid, oDlg.Username, oDlg.Password, oDlg.Domain,
-                        trustedRootCaThumbprint: oDlg.TrustedRootCaThumbprint,
-                        disableUserPromptForServerValidation: oDlg.DisableUserPromptForServerValidation);
+
+                    if (oDlg.IsEapTls)
+                    {
+                        oIface.ConnectEnterpriseEapTls(oDlg.Ssid, oDlg.ClientCertThumbprint,
+                            trustedRootCaThumbprint: oDlg.TrustedRootCaThumbprint,
+                            disableUserPromptForServerValidation: oDlg.DisableUserPromptForServerValidation);
+                    }
+                    else
+                    {
+                        oIface.ConnectEnterprise(oDlg.Ssid, oDlg.Username, oDlg.Password, oDlg.Domain,
+                            trustedRootCaThumbprint: oDlg.TrustedRootCaThumbprint,
+                            disableUserPromptForServerValidation: oDlg.DisableUserPromptForServerValidation);
+                    }
+
                     lblStatus.Text = $"Status: Connect request for {oDlg.Ssid} completed";
                 }
                 catch (Exception oEx)

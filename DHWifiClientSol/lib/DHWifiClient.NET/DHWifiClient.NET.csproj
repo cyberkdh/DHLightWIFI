@@ -1,69 +1,16 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{32BB3B43-0AC5-41EC-9B17-D70BE98DA68E}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <TargetFramework>net46</TargetFramework>
     <RootNamespace>DHWifiClient.NET</RootNamespace>
     <AssemblyName>DHWifiClient.NET</AssemblyName>
-    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="DHWifiClient.cs" />
-    <Compile Include="module\WifiAuthentication.cs" />
-    <Compile Include="module\WifiCipher.cs" />
-    <Compile Include="module\WifiCipherAlgorithm.cs" />
-    <Compile Include="module\WifiException.cs" />
-    <Compile Include="module\WifiInterface.cs" />
-    <Compile Include="module\WifiInterfaceState.cs" />
-    <Compile Include="module\WifiNetwork.cs" />
-    <Compile Include="module\WifiNotificationEventArgs.cs" />
-    <Compile Include="module\WifiNotificationType.cs" />
-    <Compile Include="module\WifiProfileInfo.cs" />
-    <Compile Include="module\WifiPskProtocol.cs" />
-    <Compile Include="module\WifiRadioState.cs" />
-    <Compile Include="module\WifiWepAuthentication.cs" />
-    <Compile Include="log\FileLogWriter.cs" />
-    <Compile Include="log\ILogWriter.cs" />
-    <Compile Include="log\LogLevel.cs" />
-    <Compile Include="log\Logger.cs" />
-    <Compile Include="win32\WlanEnums.cs" />
-    <Compile Include="win32\WlanNativeMethods.cs" />
-    <Compile Include="win32\WlanProfileXml.cs" />
-    <Compile Include="win32\WlanStructures.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+
 </Project>

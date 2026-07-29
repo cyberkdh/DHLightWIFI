@@ -346,6 +346,53 @@ namespace DHWifiClient.NET.module
             Logger.Info($"[{Name}] Enterprise connect request succeeded (whether the connection actually completes must be confirmed via a state change): SSID={ssid}");
         }
 
+        /// <summary>
+        /// Connects to a WPA2-Enterprise (802.1X) network using EAP-TLS, authenticating with a client
+        /// certificate instead of a username/password. The client certificate must already be installed
+        /// in the Windows certificate store (Personal) with its private key.
+        /// </summary>
+        /// <param name="clientCertThumbprint">
+        /// Optional SHA1 thumbprint (hex, no separators) of the client certificate to use. When omitted,
+        /// Windows automatically selects a matching certificate from the store (SimpleCertSelection);
+        /// it may also fall back to an interactive certificate chooser.
+        /// </param>
+        /// <param name="serverNames">Optional semicolon-separated list of expected RADIUS server certificate subject names.</param>
+        /// <param name="trustedRootCaThumbprint">Optional SHA1 thumbprint (hex, no separators) of the trusted Root CA that issued the RADIUS server certificate. Providing this lets Windows validate the server certificate without an interactive trust prompt.</param>
+        /// <param name="disableUserPromptForServerValidation">When true, suppresses the "Continue connecting?" prompt. Only meaningful together with <paramref name="trustedRootCaThumbprint"/>.</param>
+        public void ConnectEnterpriseEapTls(string ssid, string clientCertThumbprint = null,
+            string serverNames = "", string trustedRootCaThumbprint = null, bool disableUserPromptForServerValidation = false)
+        {
+            if (string.IsNullOrEmpty(ssid))
+            {
+                throw new ArgumentException("ssid is required", nameof(ssid));
+            }
+
+            Logger.Info($"[{Name}] Enterprise connect attempt (EAP-TLS): SSID={ssid}, ClientCertThumbprint={clientCertThumbprint ?? "(auto)"}");
+
+            string strProfileXml = WlanProfileXml.CreateWpa2EnterpriseEapTls(ssid, serverNames, trustedRootCaThumbprint, disableUserPromptForServerValidation);
+            Logger.Debug($"[{Name}] Enterprise profile XML:{System.Environment.NewLine}{strProfileXml}");
+            SetProfile(strProfileXml);
+
+            if (!string.IsNullOrEmpty(clientCertThumbprint))
+            {
+                var gGuid = Id;
+                string strEapUserDataXml = WlanProfileXml.CreateEapTlsUserData(clientCertThumbprint);
+                Logger.Debug($"[{Name}] Enterprise EAP user-data XML:{System.Environment.NewLine}{strEapUserDataXml}");
+                int nEapResult = WlanNativeMethods.WlanSetProfileEapXmlUserData(
+                    m_pClientHandle, ref gGuid, ssid, 0, strEapUserDataXml, IntPtr.Zero);
+                if (nEapResult != 0)
+                {
+                    // WlanSetProfileEapXmlUserData can fail (e.g. ERROR_BAD_PROFILE) if a stale profile
+                    // with the same name already exists from a previous attempt. Falling through lets
+                    // Windows fall back to automatic certificate selection or its own interactive chooser.
+                    Logger.Info($"[{Name}] Enterprise EAP-TLS client certificate thumbprint apply failed (code={nEapResult}); Windows may fall back to certificate chooser: SSID={ssid}");
+                }
+            }
+
+            ConnectProfile(ssid);
+            Logger.Info($"[{Name}] Enterprise connect request succeeded (whether the connection actually completes must be confirmed via a state change): SSID={ssid}");
+        }
+
         /// <summary>Disconnects the current connection.</summary>
         public void Disconnect()
         {

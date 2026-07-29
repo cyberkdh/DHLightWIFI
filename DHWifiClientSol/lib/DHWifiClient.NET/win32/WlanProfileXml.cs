@@ -195,6 +195,108 @@ $@"<?xml version=""1.0""?>
         }
 
         /// <summary>
+        /// Creates a WPA2-Enterprise (802.1X) profile using EAP-TLS (EAP type 13), authenticating with a
+        /// client certificate instead of a username/password. The client certificate is selected from the
+        /// Windows certificate store, either automatically (SimpleCertSelection) or pinned to a specific
+        /// certificate via <see cref="CreateEapTlsUserData"/> and WlanSetProfileEapXmlUserData.
+        /// </summary>
+        /// <param name="ssid">Target network SSID.</param>
+        /// <param name="serverNames">Optional semicolon-separated list of expected RADIUS server certificate subject names (ServerNames element). Empty means no restriction.</param>
+        /// <param name="trustedRootCaThumbprint">Optional SHA1 thumbprint (hex, no separators) of the trusted Root CA certificate that issued the RADIUS server certificate. When set, Windows can validate the server certificate without prompting the user.</param>
+        /// <param name="disableUserPromptForServerValidation">When true, Windows will not show the "Continue connecting?" server-certificate-trust prompt. Only set this to true when <paramref name="trustedRootCaThumbprint"/> is also provided, otherwise the connection has no way to establish trust.</param>
+        public static string CreateWpa2EnterpriseEapTls(string ssid, string serverNames = "", string trustedRootCaThumbprint = null, bool disableUserPromptForServerValidation = false)
+        {
+            string strServerValidationBlock =
+$@"                                    <ServerValidation>
+                                        <DisableUserPromptForServerValidation>{(disableUserPromptForServerValidation ? "true" : "false")}</DisableUserPromptForServerValidation>
+                                        <ServerNames>{SecurityElement.Escape(serverNames ?? string.Empty)}</ServerNames>";
+
+            if (!string.IsNullOrEmpty(trustedRootCaThumbprint))
+            {
+                strServerValidationBlock += $@"
+                                        <TrustedRootCA>{trustedRootCaThumbprint}</TrustedRootCA>";
+            }
+
+            strServerValidationBlock += @"
+                                    </ServerValidation>";
+
+            return
+$@"<?xml version=""1.0""?>
+<WLANProfile xmlns=""http://www.microsoft.com/networking/WLAN/profile/v1"">
+    <name>{SecurityElement.Escape(ssid)}</name>
+    <SSIDConfig>
+        <SSID>
+            <name>{SecurityElement.Escape(ssid)}</name>
+        </SSID>
+    </SSIDConfig>
+    <connectionType>ESS</connectionType>
+    <connectionMode>manual</connectionMode>
+    <MSM>
+        <security>
+            <authEncryption>
+                <authentication>WPA2</authentication>
+                <encryption>AES</encryption>
+                <useOneX>true</useOneX>
+            </authEncryption>
+            <OneX xmlns=""http://www.microsoft.com/networking/OneX/v1"">
+                <authMode>user</authMode>
+                <EAPConfig>
+                    <EapHostConfig xmlns=""http://www.microsoft.com/provisioning/EapHostConfig"">
+                        <EapMethod>
+                            <Type xmlns=""http://www.microsoft.com/provisioning/EapCommon"">13</Type>
+                            <VendorId xmlns=""http://www.microsoft.com/provisioning/EapCommon"">0</VendorId>
+                            <VendorType xmlns=""http://www.microsoft.com/provisioning/EapCommon"">0</VendorType>
+                            <AuthorId xmlns=""http://www.microsoft.com/provisioning/EapCommon"">0</AuthorId>
+                        </EapMethod>
+                        <Config xmlns=""http://www.microsoft.com/provisioning/EapHostConfig"">
+                            <Eap xmlns=""http://www.microsoft.com/provisioning/BaseEapConnectionPropertiesV1"">
+                                <Type>13</Type>
+                                <EapType xmlns=""http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1"">
+                                    <CredentialsSource>
+                                        <CertificateStore>
+                                            <SimpleCertSelection>true</SimpleCertSelection>
+                                        </CertificateStore>
+                                    </CredentialsSource>
+{strServerValidationBlock}
+                                    <DifferentUsername>false</DifferentUsername>
+                                </EapType>
+                            </Eap>
+                        </Config>
+                    </EapHostConfig>
+                </EAPConfig>
+            </OneX>
+        </security>
+    </MSM>
+</WLANProfile>";
+        }
+
+        /// <summary>
+        /// Creates the EapHostUserCredentials XML for EAP-TLS (EAP type 13), pinning a specific client
+        /// certificate by its SHA1 thumbprint (hex, no separators), consumed by WlanSetProfileEapXmlUserData.
+        /// When this is not applied, Windows falls back to automatic certificate selection
+        /// (SimpleCertSelection in the profile) or an interactive certificate chooser.
+        /// </summary>
+        public static string CreateEapTlsUserData(string clientCertThumbprint)
+        {
+            return
+$@"<?xml version=""1.0""?>
+<EapHostUserCredentials xmlns=""http://www.microsoft.com/provisioning/EapHostUserCredentials"" xmlns:eapCommon=""http://www.microsoft.com/provisioning/EapCommon"" xmlns:baseEap=""http://www.microsoft.com/provisioning/BaseEapMethodUserCredentials"">
+    <EapMethod>
+        <eapCommon:Type>13</eapCommon:Type>
+        <eapCommon:AuthorId>0</eapCommon:AuthorId>
+    </EapMethod>
+    <Credentials xmlns:eapUser=""http://www.microsoft.com/provisioning/EapUserPropertiesV1"" xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:baseEap=""http://www.microsoft.com/provisioning/BaseEapUserPropertiesV1"" xmlns:eapTls=""http://www.microsoft.com/provisioning/EapTlsUserPropertiesV1"">
+        <baseEap:Eap>
+            <baseEap:Type>13</baseEap:Type>
+            <eapTls:EapType>
+                <eapTls:UserCert>{clientCertThumbprint}</eapTls:UserCert>
+            </eapTls:EapType>
+        </baseEap:Eap>
+    </Credentials>
+</EapHostUserCredentials>";
+        }
+
+        /// <summary>
         /// Creates the EapHostUserCredentials XML for PEAP-MSCHAPv2 (username/password, optional logon domain),
         /// consumed by WlanSetProfileEapXmlUserData. Never persisted or logged by this library.
         /// </summary>
