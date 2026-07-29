@@ -1,0 +1,38 @@
+name: Publish to NuGet
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  publish:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+
+      - name: Restore
+        run: msbuild DHWifiClientSol/lib/DHWifiClient.NET/DHWifiClient.NET.csproj /t:Restore /p:Configuration=Release /nologo /v:minimal
+
+      - name: Pack
+        run: msbuild DHWifiClientSol/lib/DHWifiClient.NET/DHWifiClient.NET.csproj /t:Pack /p:Configuration=Release /nologo /v:minimal
+
+      - name: Push to NuGet.org
+        run: dotnet nuget push DHWifiClientSol/lib/DHWifiClient.NET/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Upload nupkg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: DHWifiClientSol/lib/DHWifiClient.NET/bin/Release/*.nupkg
