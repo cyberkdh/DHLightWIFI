@@ -11,7 +11,7 @@ profiles, and observe real-time connection events — all through a small, depen
 - Platform:
   - The library itself can remain `AnyCPU`.
   - For `802.1X` (`PEAP-MSCHAPv2` / `EAP-TLS`) scenarios, the consuming executable should target an explicit architecture: `x86` or `x64` (not `AnyCPU`).
-  - The WinForms sample defaults to `x64` and also provides an `x86` configuration.
+  - The sample executables default to `x64` and also provide an `x86` configuration.
   - This recommendation is based on real validation plus a matching Microsoft Q&A symptom report for `WlanSetProfileEapXmlUserData` with `AnyCPU` executables. The Learn API reference does not currently document this constraint explicitly.
 
 ## Install
@@ -162,15 +162,20 @@ using (var client = new DHWifiClient())
 
 ## Supported authentication methods
 
+The table below reflects the `DHWifiClient2` facade surface:
+
 | Method | API |
 |---|---|
-| Open | `Connect(ssid)` |
+| Open | `ConnectOpen(ssid)` / `ConnectOpenAndWait(ssid)` |
 | WEP | `ConnectWep(ssid, wepKey, authentication, keyIndex)` |
-| WPA/WPA2-Personal (PSK) | `Connect(ssid, password)` / `Connect(ssid, password, protocol, cipher)` |
-| Saved profile reconnect | `ConnectSavedProfile(ssid)` |
-| WPA2-Enterprise (PEAP-MSCHAPv2) | `ConnectEnterprise(ssid, username, password, domain)` |
-| WPA2-Enterprise (EAP-TLS, client certificate) | `ConnectEnterpriseEapTls(ssid, clientCertThumbprint)` |
-| Auto-detect from scan result | `Connect(WifiNetwork network, string password)` |
+| WPA/WPA2-Personal (PSK) | `ConnectPersonal(ssid, password)` / `ConnectPersonal(ssid, password, protocol, cipher)` |
+| Saved profile reconnect | `ConnectSavedProfile(ssid)` / `ConnectSavedProfileAndWait(ssid)` |
+| Hidden Open | `ConnectHiddenOpen(ssid)` / `ConnectHiddenOpenAndWait(ssid)` |
+| Hidden WPA/WPA2-Personal (PSK) | `ConnectHiddenPersonal(ssid, password)` / `ConnectHiddenPersonalAndWait(...)` |
+| Hidden WEP | `ConnectHiddenWep(ssid, wepKey, authentication, keyIndex)` / `ConnectHiddenWepAndWait(...)` |
+| WPA2-Enterprise (PEAP-MSCHAPv2) | `ConnectEnterprise(ssid, username, password, domain)` / `ConnectEnterpriseAndWait(...)` |
+| WPA2-Enterprise (EAP-TLS, client certificate) | `ConnectEnterpriseEapTls(ssid, clientCertThumbprint)` / `ConnectEnterpriseEapTlsAndWait(...)` |
+| Auto-detect from scan result | `Connect(WifiNetwork network, string password)` / `ConnectAndWait(WifiNetwork network, string password)` |
 
 WPA3-SAE and ad-hoc (IBSS) networks are intentionally not supported; the API throws
 `NotSupportedException` for these cases with an explanatory message.
@@ -190,10 +195,16 @@ WPA3-SAE and ad-hoc (IBSS) networks are intentionally not supported; the API thr
 
 - `DHWifiClientSol\sample\DHWifiClientSample`
   - Classic sample that uses the original `DHWifiClient` entry point.
+  - Targets `net46`, `net48`, `net6.0-windows`, and `net8.0-windows`.
+  - Executable sample: build as `x86` or `x64`; default is `x64`.
 - `DHWifiClientSol\sample\DHWifiClient2Sample`
   - WinForms feature sample that uses the `DHWifiClient2` facade entry point and demonstrates scan, connect, saved-profile reconnect, hidden-network connect, Enterprise (`802.1X`) connect, radio toggle, and profile deletion.
+  - Targets `net46`, `net48`, `net6.0-windows`, and `net8.0-windows`.
+  - Executable sample: build as `x86` or `x64`; default is `x64`.
 - `DHWifiClientSol\sample\DHWifiClient2ConsoleSample`
   - Minimal console sample for `scan -> select -> connect -> disconnect` flow with the `DHWifiClient2` facade entry point.
+  - Targets `net46`, `net48`, `net6.0-windows`, and `net8.0-windows`.
+  - Executable sample: build as `x86` or `x64`; default is `x64`.
 - Manual verification checklist for the WinForms sample is maintained in `doc/discuss_v1.0.1/0021_20260730_205500_dhwificlient2sample_manual_checklist.md`.
 
 ### Console sample quick run
@@ -211,6 +222,8 @@ dotnet run --project .\DHWifiClientSol\sample\DHWifiClient2ConsoleSample\DHWifiC
 ## Sample platform notes
 
 - The sample applications are Windows-only (`WinForms` / `Native Wifi`).
+- All sample executables target `net46`, `net48`, `net6.0-windows`, and `net8.0-windows`.
+- All sample executables are configured for explicit `x86` / `x64` builds; default platform is `x64`.
 - On modern .NET targets (`net6.0-windows`, `net8.0-windows`), `CA1416` warnings can appear because the analyzers see `WinForms` control access and other Windows-only APIs.
 - In this repository, those `CA1416` warnings in the sample applications do not indicate a portability goal regression; they reflect the intentional Windows-only design of the samples.
 - `NETSDK1201` can appear after adding `RuntimeIdentifier` / `RuntimeIdentifiers` for explicit `x86` / `x64` sample builds. In this repository, that warning is kept as documentation-only because the samples are intended to remain framework-dependent, not self-contained.
