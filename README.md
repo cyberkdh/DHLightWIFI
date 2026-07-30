@@ -8,7 +8,10 @@ profiles, and observe real-time connection events — all through a small, depen
 
 - Windows Vista or later (uses the Native Wifi API, `wlanapi.dll`)
 - Target frameworks: `net46`, `net6.0-windows`, `net8.0-windows`
-- Platform: `x64` (the sample app targets x64; `wlanapi.dll` marshaling has been validated on x64 only)
+- Platform:
+  - The library itself can remain `AnyCPU`.
+  - For `802.1X` (`PEAP-MSCHAPv2` / `EAP-TLS`) scenarios, the consuming executable should target an explicit architecture: `x86` or `x64` (not `AnyCPU`).
+  - The WinForms sample defaults to `x64` and also provides an `x86` configuration.
 
 ## Install
 

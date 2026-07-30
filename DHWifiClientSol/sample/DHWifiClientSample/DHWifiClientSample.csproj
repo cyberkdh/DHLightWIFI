@@ -6,7 +6,10 @@
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>DHWifiClientSample</RootNamespace>
     <AssemblyName>DHWifiClientSample</AssemblyName>
-    <PlatformTarget>x64</PlatformTarget>
+    <Platforms>x86;x64</Platforms>
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+    <PlatformTarget>$(Platform)</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Deterministic>true</Deterministic>
     <OutputPath>..\..\output\$(Configuration)\</OutputPath>
