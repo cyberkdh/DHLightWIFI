@@ -18,9 +18,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
-
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -28,10 +25,13 @@ jobs:
             8.0.x
 
       - name: Restore
-        run: msbuild DHWifiClientSol/lib/DHWifiClient.NET/DHWifiClient.NET.csproj /t:Restore /p:Configuration=Release /nologo /v:minimal
+        run: dotnet restore DHWifiClientSol/lib/DHWifiClient.NET/DHWifiClient.NET.csproj
 
       - name: Pack
-        run: msbuild DHWifiClientSol/lib/DHWifiClient.NET/DHWifiClient.NET.csproj /t:Pack /p:Configuration=Release /nologo /v:minimal
+        run: dotnet pack DHWifiClientSol/lib/DHWifiClient.NET/DHWifiClient.NET.csproj -c Release --no-restore
+
+      - name: List packed output (diagnostic)
+        run: Get-ChildItem -Recurse DHWifiClientSol/lib/DHWifiClient.NET/bin/Release
 
       - name: NuGet login (OIDC -> temporary API key)
         uses: NuGet/login@v1
