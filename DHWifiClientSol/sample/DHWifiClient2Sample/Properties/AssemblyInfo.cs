@@ -8,11 +8,11 @@ using System.Runtime.Versioning;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("DHWifiClientSample")]
+[assembly: AssemblyTitle("DHWifiClient2Sample")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("DHWifiClientSample")]
+[assembly: AssemblyProduct("DHWifiClient2Sample")]
 [assembly: AssemblyCopyright("Copyright ©  2026")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -23,7 +23,7 @@ using System.Runtime.Versioning;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("18192ec4-1a38-43fd-94a3-1c92d2b1bd6c")]
+[assembly: Guid("f5e922a0-3f62-4c53-8a50-fcbdf5fb9e17")]
 
 // Version information for an assembly consists of the following four values:
 //

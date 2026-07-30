@@ -7,5 +7,8 @@
 /DHWifiClientSol/lib/DHWifiClient.NET/obj
 /DHWifiClientSol/output
 /DHWifiClientSol/sample/DHWifiClientSample/obj
+/DHWifiClientSol/sample/DHWifiClient2Sample/obj
+/DHWifiClientSol/sample/DHWifiClient2ConsoleSample/obj
 /DHWifiClientSol/test/DHWifiClient.NET.Tests/bin
 /DHWifiClientSol/test/DHWifiClient.NET.Tests/obj
+*.csproj.user

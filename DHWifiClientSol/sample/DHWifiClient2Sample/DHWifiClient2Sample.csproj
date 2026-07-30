@@ -4,8 +4,8 @@
     <TargetFrameworks>net46;net48;net6.0-windows;net8.0-windows</TargetFrameworks>
     <OutputType>WinExe</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
-    <RootNamespace>DHWifiClientSample</RootNamespace>
-    <AssemblyName>DHWifiClientSample</AssemblyName>
+    <RootNamespace>DHWifiClient2Sample</RootNamespace>
+    <AssemblyName>DHWifiClient2Sample</AssemblyName>
     <Platforms>x86;x64</Platforms>
     <Platform Condition="'$(Platform)' == ''">x64</Platform>
     <PlatformTarget>$(Platform)</PlatformTarget>

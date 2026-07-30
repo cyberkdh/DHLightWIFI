@@ -7,7 +7,7 @@ profiles, and observe real-time connection events — all through a small, depen
 ## Requirements
 
 - Windows Vista or later (uses the Native Wifi API, `wlanapi.dll`)
-- Target frameworks: `net46`, `net6.0-windows`, `net8.0-windows`
+- Target frameworks: `net46`, `net48`, `net6.0-windows`, `net8.0-windows`
 - Platform:
   - The library itself can remain `AnyCPU`.
   - For `802.1X` (`PEAP-MSCHAPv2` / `EAP-TLS`) scenarios, the consuming executable should target an explicit architecture: `x86` or `x64` (not `AnyCPU`).
@@ -21,6 +21,30 @@ dotnet add package DHWifiClient.NET
 ```
 
 ## Quick start
+
+Recommended entry point for new code:
+
+```csharp
+using DHWifiClient.NET;
+
+using (var client = new DHWifiClient2())
+{
+    client.Scan(); // Asynchronous: does not wait for scan-complete notification.
+    var networks = client.GetAvailableNetworks(mergeDuplicateBssids: true);
+    var homeWifi = client.GetAvailableNetwork("MyHomeWifi", mergeDuplicateBssids: true);
+
+    if (homeWifi != null)
+    {
+        client.Connect(homeWifi, password: "MyPassword123");
+    }
+
+    var current = client.GetCurrentConnection();
+}
+```
+
+- `ScanAndGetAvailableNetworks(...)` is available as a convenience helper, but it still returns immediately after requesting the asynchronous scan. Use the `Notification` event if you need to wait for `ScanComplete` before trusting a refreshed list.
+
+Classic low-level entry point:
 
 ```csharp
 using DHWifiClient.NET;
@@ -55,16 +79,39 @@ WPA3-SAE and ad-hoc (IBSS) networks are intentionally not supported; the API thr
 ## Other capabilities
 
 - `GetInterfaces()` — enumerate WiFi adapters
-- `GetProfiles()` / `DeleteProfile(name)` — manage saved profiles
+- `GetSavedProfiles()` / `HasSavedProfile(name)` / `DeleteSavedProfile(name)` — manage saved profiles
 - `GetRadioState()` / `SetRadioState(bool)` — query/toggle the software radio switch
 - `Notification` event — scan/connect/disconnect lifecycle notifications (raised on a native
   callback thread; marshal to the UI thread yourself before touching UI controls)
 
 ## Sample application
 
-A WinForms sample (`DHWifiClientSol\sample\DHWifiClientSample`) demonstrates scanning, connecting
-(including Enterprise credential/certificate dialogs and hidden-network entry), and viewing saved
-profiles.
+- `DHWifiClientSol\sample\DHWifiClientSample`
+  - Classic sample that uses the original `DHWifiClient` entry point.
+- `DHWifiClientSol\sample\DHWifiClient2Sample`
+  - WinForms feature sample that uses the `DHWifiClient2` facade entry point and demonstrates scan, connect, saved-profile reconnect, hidden-network connect, Enterprise (`802.1X`) connect, radio toggle, and profile deletion.
+- `DHWifiClientSol\sample\DHWifiClient2ConsoleSample`
+  - Minimal console sample for `scan -> select -> connect -> disconnect` flow with the `DHWifiClient2` facade entry point.
+
+### Console sample quick run
+
+```powershell
+dotnet run --project .\DHWifiClientSol\sample\DHWifiClient2ConsoleSample\DHWifiClient2ConsoleSample.csproj -c Debug -p:Platform=x64
+```
+
+- Optional first argument: Wi-Fi interface name
+
+```powershell
+dotnet run --project .\DHWifiClientSol\sample\DHWifiClient2ConsoleSample\DHWifiClient2ConsoleSample.csproj -c Debug -p:Platform=x64 -- "Wi-Fi"
+```
+
+## Sample platform notes
+
+- The sample applications are Windows-only (`WinForms` / `Native Wifi`).
+- On modern .NET targets (`net6.0-windows`, `net8.0-windows`), `CA1416` warnings can appear because the analyzers see `WinForms` control access and other Windows-only APIs.
+- In this repository, those `CA1416` warnings in the sample applications do not indicate a portability goal regression; they reflect the intentional Windows-only design of the samples.
+- `NETSDK1201` can appear after adding `RuntimeIdentifier` / `RuntimeIdentifiers` for explicit `x86` / `x64` sample builds. In this repository, that warning is kept as documentation-only because the samples are intended to remain framework-dependent, not self-contained.
+- `NETSDK1138` can appear because `net6.0-windows` is out of support as of July 30, 2026. In this repository, that warning is also kept as documentation-only while `net6.0-windows` remains in the multi-target matrix for compatibility.
 
 ## License
 

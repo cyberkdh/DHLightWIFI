@@ -13,6 +13,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/), and this pro
 - Saved WLAN profile management: list, reconnect, delete.
 - Radio state query/toggle (software switch).
 - Real-time connection lifecycle notifications (scan/connect/disconnect events).
-- Multi-targeting: `net46`, `net6.0-windows`, `net8.0-windows`.
-- WinForms sample application demonstrating all supported connection flows.
+- Multi-targeting: `net46`, `net48`, `net6.0-windows`, `net8.0-windows`.
+- `DHWifiClient2` facade entry point for simpler Wi-Fi usage from new code.
+- Split samples by role:
+  - `DHWifiClientSample` keeps the legacy `DHWifiClient` usage for backward compatibility.
+  - `DHWifiClient2Sample` is a minimal WinForms sample for the new `DHWifiClient2` facade.
+  - `DHWifiClient2ConsoleSample` is a minimal console sample for quick Wi-Fi testing.
 - Documentation note: for `802.1X` (`PEAP-MSCHAPv2` / `EAP-TLS`) scenarios, the consuming executable should target an explicit architecture (`x86` or `x64`) instead of `AnyCPU`. The library itself can remain `AnyCPU`; this guidance matches real validation and a corresponding Microsoft Q&A symptom report, even though the Learn API reference does not call out the constraint directly.
+- Documentation note: `NETSDK1201` and `NETSDK1138` are currently tracked as documentation-only warnings while the compatibility target matrix remains unchanged.
