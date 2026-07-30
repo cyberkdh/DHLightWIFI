@@ -29,13 +29,13 @@ using DHWifiClient.NET;
 
 using (var client = new DHWifiClient2())
 {
-    client.Scan(); // Asynchronous: does not wait for scan-complete notification.
+    client.ScanAndWait();
     var networks = client.GetAvailableNetworks(mergeDuplicateBssids: true);
     var homeWifi = client.GetAvailableNetwork("MyHomeWifi", mergeDuplicateBssids: true);
 
     if (homeWifi != null)
     {
-        client.Connect(homeWifi, password: "MyPassword123");
+        var result = client.ConnectAndWait(homeWifi, password: "MyPassword123", mergeDuplicateBssids: true);
     }
 
     var current = client.GetCurrentConnection();
@@ -43,6 +43,8 @@ using (var client = new DHWifiClient2())
 ```
 
 - `ScanAndGetAvailableNetworks(...)` is available as a convenience helper, but it still returns immediately after requesting the asynchronous scan. Use the `Notification` event if you need to wait for `ScanComplete` before trusting a refreshed list.
+- For simpler synchronous-style flows on top of the asynchronous Native WiFi notifications, `DHWifiClient2` also provides `ScanAndWait(...)`, `WaitForScanComplete(...)`, `ConnectAndWait(...)`, `ConnectSavedProfileAndWait(...)`, and `WaitForConnectionResult(...)`.
+- For the most common direct-entry connection flows, `DHWifiClient2` also provides `ConnectOpenAndWait(...)`, `ConnectPersonalAndWait(...)`, `ConnectWepAndWait(...)`, `ConnectEnterpriseAndWait(...)`, and `ConnectEnterpriseEapTlsAndWait(...)`.
 
 Classic low-level entry point:
 
@@ -81,6 +83,8 @@ WPA3-SAE and ad-hoc (IBSS) networks are intentionally not supported; the API thr
 - `GetInterfaces()` — enumerate WiFi adapters
 - `GetSavedProfiles()` / `HasSavedProfile(name)` / `DeleteSavedProfile(name)` — manage saved profiles
 - `GetRadioState()` / `SetRadioState(bool)` — query/toggle the software radio switch
+- `ScanAndWait()` / `ConnectAndWait()` — wait-helper APIs for common scan/connect flows
+- `ConnectOpenAndWait()` / `ConnectPersonalAndWait()` / `ConnectEnterpriseAndWait()` — direct wait-helper APIs for SSID-first flows
 - `Notification` event — scan/connect/disconnect lifecycle notifications (raised on a native
   callback thread; marshal to the UI thread yourself before touching UI controls)
 

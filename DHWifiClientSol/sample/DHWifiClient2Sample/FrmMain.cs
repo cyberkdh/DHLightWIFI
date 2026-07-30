@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using DHWifiClient.NET;
 using DHWifiClient.NET.log;
@@ -21,10 +22,9 @@ namespace DHWifiClient2Sample
     {
         private DHWifiClient2 m_oClient;
         private List<WifiInterface> m_listInterfaces = new List<WifiInterface>();
-        private Timer m_oScanCompleteTimer;
         private TextBoxLogWriter m_oLogWriter;
-        private bool m_bUserInitiatedScan;
         private string m_strLastConnectAttemptSsid;
+        private bool m_bSuppressOperationNotifications;
 
         private WifiInterface CurrentInterface => m_oClient?.CurrentInterface;
 
@@ -138,19 +138,22 @@ namespace DHWifiClient2Sample
             switch (e.Type)
             {
                 case WifiNotificationType.ScanComplete:
-                    m_oScanCompleteTimer?.Stop();
-                    btnScan.Enabled = true;
-                    RefreshNetworkList(announceCount: m_bUserInitiatedScan);
-                    m_bUserInitiatedScan = false;
+                    if (!m_bSuppressOperationNotifications)
+                    {
+                        RefreshNetworkList(announceCount: false);
+                        lblStatus.Text = "Status: Scan completed";
+                    }
                     break;
 
                 case WifiNotificationType.ScanFailed:
-                    m_oScanCompleteTimer?.Stop();
-                    btnScan.Enabled = true;
-                    lblStatus.Text = "Status: Scan failed";
+                    if (!m_bSuppressOperationNotifications)
+                    {
+                        lblStatus.Text = "Status: Scan failed";
+                    }
                     break;
 
                 case WifiNotificationType.ConnectionCompleted:
+                    if (!m_bSuppressOperationNotifications)
                     {
                         bool? bConnected = RefreshNetworkList(announceCount: false);
                         if (bConnected == true)
@@ -165,23 +168,11 @@ namespace DHWifiClient2Sample
                     break;
 
                 case WifiNotificationType.ConnectionAttemptFailed:
-                    RefreshNetworkList(announceCount: false);
-                    lblStatus.Text = "Status: Connect attempt failed";
-                    MessageBox.Show(this, "Connection attempt failed.", "Connect", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-
-                    if (chkDeleteProfileOnAuthFailure.Checked && !string.IsNullOrEmpty(m_strLastConnectAttemptSsid))
+                    if (!m_bSuppressOperationNotifications)
                     {
-                        try
-                        {
-                            m_oClient.DeleteSavedProfile(m_strLastConnectAttemptSsid);
-                            Logger.Info($"[{oIface.Name}] Deleted profile after auth failure: SSID={m_strLastConnectAttemptSsid}");
-                            RefreshNetworkList(announceCount: false);
-                            lblStatus.Text = $"Status: Connect attempt failed (profile for {m_strLastConnectAttemptSsid} deleted)";
-                        }
-                        catch (Exception oEx)
-                        {
-                            Logger.Error($"Delete profile after auth failure failed: SSID={m_strLastConnectAttemptSsid}", oEx);
-                        }
+                        RefreshNetworkList(announceCount: false);
+                        lblStatus.Text = "Status: Connect attempt failed";
+                        MessageBox.Show(this, "Connection attempt failed.", "Connect", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
                     break;
 
@@ -407,7 +398,7 @@ namespace DHWifiClient2Sample
             }
         }
 
-        private void btnScan_Click(object sender, EventArgs e)
+        private async void btnScan_Click(object sender, EventArgs e)
         {
             if (CurrentInterface == null)
             {
@@ -418,31 +409,38 @@ namespace DHWifiClient2Sample
             {
                 btnScan.Enabled = false;
                 lblStatus.Text = "Status: Scanning...";
-                m_bUserInitiatedScan = true;
-                m_oClient.Scan();
+                m_bSuppressOperationNotifications = true;
+                var eStatus = await Task.Run(() => m_oClient.ScanAndWait(10000));
+                RefreshNetworkList(announceCount: true);
+
+                switch (eStatus)
+                {
+                    case WifiWaitStatus.Success:
+                        lblStatus.Text = $"Status: Found {lvNetworks.Items.Count} network(s)";
+                        break;
+
+                    case WifiWaitStatus.Failed:
+                        lblStatus.Text = "Status: Scan failed";
+                        break;
+
+                    default:
+                        lblStatus.Text = $"Status: Found {lvNetworks.Items.Count} network(s) (scan wait timed out)";
+                        break;
+                }
             }
             catch (Exception oEx)
             {
                 Logger.Error("Scan request failed", oEx);
-                btnScan.Enabled = true;
-                m_bUserInitiatedScan = false;
                 lblStatus.Text = "Status: Scan request failed";
-                return;
             }
-
-            m_oScanCompleteTimer?.Stop();
-            m_oScanCompleteTimer = new Timer { Interval = 6000 };
-            m_oScanCompleteTimer.Tick += (s, args) =>
+            finally
             {
-                m_oScanCompleteTimer.Stop();
                 btnScan.Enabled = true;
-                RefreshNetworkList(announceCount: m_bUserInitiatedScan);
-                m_bUserInitiatedScan = false;
-            };
-            m_oScanCompleteTimer.Start();
+                m_bSuppressOperationNotifications = false;
+            }
         }
 
-        private void btnConnect_Click(object sender, EventArgs e)
+        private async void btnConnect_Click(object sender, EventArgs e)
         {
             if (CurrentInterface == null || lvNetworks.SelectedItems.Count == 0)
             {
@@ -471,8 +469,13 @@ namespace DHWifiClient2Sample
             {
                 lblStatus.Text = $"Status: Connecting to {oNetwork.Ssid}...";
                 m_strLastConnectAttemptSsid = oNetwork.Ssid;
-                m_oClient.Connect(oNetwork, strPassword);
-                lblStatus.Text = $"Status: Connect request for {oNetwork.Ssid} completed";
+                m_bSuppressOperationNotifications = true;
+                var oResult = await Task.Run(() => m_oClient.ConnectAndWait(
+                    oNetwork,
+                    strPassword,
+                    millisecondsTimeout: 15000,
+                    mergeDuplicateBssids: chkMergeDuplicateBssids.Checked));
+                ApplyConnectionResult(oResult, oNetwork.Ssid);
             }
             catch (Exception oEx)
             {
@@ -481,9 +484,13 @@ namespace DHWifiClient2Sample
                 MessageBox.Show(this, "Unable to connect to the network: " + oEx.Message, "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            finally
+            {
+                m_bSuppressOperationNotifications = false;
+            }
         }
 
-        private void btnReconnectSaved_Click(object sender, EventArgs e)
+        private async void btnReconnectSaved_Click(object sender, EventArgs e)
         {
             if (CurrentInterface == null || lvNetworks.SelectedItems.Count == 0)
             {
@@ -504,8 +511,12 @@ namespace DHWifiClient2Sample
             {
                 lblStatus.Text = $"Status: Connecting to {oNetwork.Ssid} (saved profile)...";
                 m_strLastConnectAttemptSsid = oNetwork.Ssid;
-                m_oClient.ConnectSavedProfile(oNetwork.Ssid);
-                lblStatus.Text = $"Status: Connect request for {oNetwork.Ssid} completed";
+                m_bSuppressOperationNotifications = true;
+                var oResult = await Task.Run(() => m_oClient.ConnectSavedProfileAndWait(
+                    oNetwork.Ssid,
+                    millisecondsTimeout: 15000,
+                    mergeDuplicateBssids: chkMergeDuplicateBssids.Checked));
+                ApplyConnectionResult(oResult, oNetwork.Ssid);
             }
             catch (Exception oEx)
             {
@@ -514,9 +525,13 @@ namespace DHWifiClient2Sample
                 MessageBox.Show(this, "Unable to connect to the network: " + oEx.Message, "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            finally
+            {
+                m_bSuppressOperationNotifications = false;
+            }
         }
 
-        private void btnHiddenNetwork_Click(object sender, EventArgs e)
+        private async void btnHiddenNetwork_Click(object sender, EventArgs e)
         {
             if (CurrentInterface == null)
             {
@@ -535,28 +550,50 @@ namespace DHWifiClient2Sample
                     lblStatus.Text = $"Status: Connecting to {oDlg.Ssid}...";
                     m_strLastConnectAttemptSsid = oDlg.Ssid;
                     Logger.Info($"[{CurrentInterface.Name}] Hidden network connect attempt: SSID={oDlg.Ssid}, Security={oDlg.SecurityType}");
+                    m_bSuppressOperationNotifications = true;
+
+                    WifiConnectionResult oResult;
 
                     switch (oDlg.SecurityType)
                     {
                         case HiddenNetworkSecurityType.Open:
-                            m_oClient.ConnectHiddenOpen(oDlg.Ssid);
+                            oResult = await Task.Run(() => m_oClient.ConnectHiddenOpenAndWait(
+                                oDlg.Ssid,
+                                millisecondsTimeout: 15000,
+                                mergeDuplicateBssids: chkMergeDuplicateBssids.Checked));
                             break;
 
                         case HiddenNetworkSecurityType.Wep:
-                            m_oClient.ConnectHiddenWep(oDlg.Ssid, oDlg.Password);
+                            oResult = await Task.Run(() => m_oClient.ConnectHiddenWepAndWait(
+                                oDlg.Ssid,
+                                oDlg.Password,
+                                millisecondsTimeout: 15000,
+                                mergeDuplicateBssids: chkMergeDuplicateBssids.Checked));
                             break;
 
                         case HiddenNetworkSecurityType.WpaPersonalTkip:
-                            m_oClient.ConnectHiddenPersonal(oDlg.Ssid, oDlg.Password, WifiPskProtocol.WPA, WifiCipher.TKIP);
+                            oResult = await Task.Run(() => m_oClient.ConnectHiddenPersonalAndWait(
+                                oDlg.Ssid,
+                                oDlg.Password,
+                                WifiPskProtocol.WPA,
+                                WifiCipher.TKIP,
+                                millisecondsTimeout: 15000,
+                                mergeDuplicateBssids: chkMergeDuplicateBssids.Checked));
                             break;
 
                         case HiddenNetworkSecurityType.Wpa2PersonalAes:
                         default:
-                            m_oClient.ConnectHiddenPersonal(oDlg.Ssid, oDlg.Password, WifiPskProtocol.WPA2, WifiCipher.AES);
+                            oResult = await Task.Run(() => m_oClient.ConnectHiddenPersonalAndWait(
+                                oDlg.Ssid,
+                                oDlg.Password,
+                                WifiPskProtocol.WPA2,
+                                WifiCipher.AES,
+                                millisecondsTimeout: 15000,
+                                mergeDuplicateBssids: chkMergeDuplicateBssids.Checked));
                             break;
                     }
 
-                    lblStatus.Text = $"Status: Connect request for {oDlg.Ssid} completed";
+                    ApplyConnectionResult(oResult, oDlg.Ssid);
                 }
                 catch (Exception oEx)
                 {
@@ -565,10 +602,14 @@ namespace DHWifiClient2Sample
                     MessageBox.Show(this, "Unable to connect to the hidden network: " + oEx.Message, "Error",
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
+                finally
+                {
+                    m_bSuppressOperationNotifications = false;
+                }
             }
         }
 
-        private void btnConnectEnterprise_Click(object sender, EventArgs e)
+        private async void btnConnectEnterprise_Click(object sender, EventArgs e)
         {
             if (CurrentInterface == null)
             {
@@ -590,21 +631,34 @@ namespace DHWifiClient2Sample
                 {
                     lblStatus.Text = $"Status: Connecting to {oDlg.Ssid} (Enterprise)...";
                     m_strLastConnectAttemptSsid = oDlg.Ssid;
+                    m_bSuppressOperationNotifications = true;
+
+                    WifiConnectionResult oResult;
 
                     if (oDlg.IsEapTls)
                     {
-                        m_oClient.ConnectEnterpriseEapTls(oDlg.Ssid, oDlg.ClientCertThumbprint,
+                        oResult = await Task.Run(() => m_oClient.ConnectEnterpriseEapTlsAndWait(
+                            oDlg.Ssid,
+                            oDlg.ClientCertThumbprint,
                             trustedRootCaThumbprint: oDlg.TrustedRootCaThumbprint,
-                            disableUserPromptForServerValidation: oDlg.DisableUserPromptForServerValidation);
+                            disableUserPromptForServerValidation: oDlg.DisableUserPromptForServerValidation,
+                            millisecondsTimeout: 15000,
+                            mergeDuplicateBssids: chkMergeDuplicateBssids.Checked));
                     }
                     else
                     {
-                        m_oClient.ConnectEnterprise(oDlg.Ssid, oDlg.Username, oDlg.Password, oDlg.Domain,
+                        oResult = await Task.Run(() => m_oClient.ConnectEnterpriseAndWait(
+                            oDlg.Ssid,
+                            oDlg.Username,
+                            oDlg.Password,
+                            oDlg.Domain,
                             trustedRootCaThumbprint: oDlg.TrustedRootCaThumbprint,
-                            disableUserPromptForServerValidation: oDlg.DisableUserPromptForServerValidation);
+                            disableUserPromptForServerValidation: oDlg.DisableUserPromptForServerValidation,
+                            millisecondsTimeout: 15000,
+                            mergeDuplicateBssids: chkMergeDuplicateBssids.Checked));
                     }
 
-                    lblStatus.Text = $"Status: Connect request for {oDlg.Ssid} completed";
+                    ApplyConnectionResult(oResult, oDlg.Ssid);
                 }
                 catch (Exception oEx)
                 {
@@ -613,6 +667,51 @@ namespace DHWifiClient2Sample
                     MessageBox.Show(this, "Unable to connect to the Enterprise network: " + oEx.Message, "Error",
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
+                finally
+                {
+                    m_bSuppressOperationNotifications = false;
+                }
+            }
+        }
+
+        private void ApplyConnectionResult(WifiConnectionResult result, string ssid)
+        {
+            RefreshNetworkList(announceCount: false);
+
+            if (result == null)
+            {
+                lblStatus.Text = "Status: Connect result was not available";
+                return;
+            }
+
+            if (result.IsSuccess)
+            {
+                lblStatus.Text = $"Status: Connected to {ssid}";
+                return;
+            }
+
+            lblStatus.Text = "Status: Connect attempt failed";
+
+            if (chkDeleteProfileOnAuthFailure.Checked && !string.IsNullOrEmpty(m_strLastConnectAttemptSsid))
+            {
+                TryDeleteProfileAfterAuthFailure(m_strLastConnectAttemptSsid);
+            }
+
+            MessageBox.Show(this, result.Message, "Connect", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+
+        private void TryDeleteProfileAfterAuthFailure(string ssid)
+        {
+            try
+            {
+                m_oClient.DeleteSavedProfile(ssid);
+                Logger.Info($"[{CurrentInterface.Name}] Deleted profile after auth failure: SSID={ssid}");
+                RefreshNetworkList(announceCount: false);
+                lblStatus.Text = $"Status: Connect attempt failed (profile for {ssid} deleted)";
+            }
+            catch (Exception oEx)
+            {
+                Logger.Error($"Delete profile after auth failure failed: SSID={ssid}", oEx);
             }
         }
 
@@ -677,7 +776,6 @@ namespace DHWifiClient2Sample
 
         private void FrmMain_FormClosed(object sender, FormClosedEventArgs e)
         {
-            m_oScanCompleteTimer?.Stop();
             if (m_oClient != null)
             {
                 m_oClient.Notification -= Client_Notification;

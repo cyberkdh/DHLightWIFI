@@ -15,6 +15,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/), and this pro
 - Real-time connection lifecycle notifications (scan/connect/disconnect events).
 - Multi-targeting: `net46`, `net48`, `net6.0-windows`, `net8.0-windows`.
 - `DHWifiClient2` facade entry point for simpler Wi-Fi usage from new code.
+- `DHWifiClient2` wait-helper APIs: `ScanAndWait`, `WaitForScanComplete`, `ConnectAndWait`, `ConnectSavedProfileAndWait`, and `WaitForConnectionResult`.
+- `DHWifiClient2` direct connection wait-helper overloads for Open, WPA/WPA2-Personal, WEP, hidden variants, PEAP-MSCHAPv2, and EAP-TLS flows.
 - Split samples by role:
   - `DHWifiClientSample` keeps the legacy `DHWifiClient` usage for backward compatibility.
   - `DHWifiClient2Sample` is a minimal WinForms sample for the new `DHWifiClient2` facade.

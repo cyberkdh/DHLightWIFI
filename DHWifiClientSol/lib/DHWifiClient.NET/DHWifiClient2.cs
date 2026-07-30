@@ -9,6 +9,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using DHWifiClient.NET.module;
 
 namespace DHWifiClient.NET
@@ -205,6 +206,24 @@ namespace DHWifiClient.NET
         }
 
         /// <summary>
+        /// Requests a scan and waits for the matching scan-complete or scan-failed notification on the
+        /// currently selected interface.
+        /// </summary>
+        public WifiWaitStatus ScanAndWait(int millisecondsTimeout = 15000)
+        {
+            return WaitForScanResult(millisecondsTimeout, startScan: true);
+        }
+
+        /// <summary>
+        /// Waits for the next scan-complete or scan-failed notification on the currently selected interface.
+        /// Call this immediately after a separate <see cref="Scan()"/> request if you need explicit confirmation.
+        /// </summary>
+        public WifiWaitStatus WaitForScanComplete(int millisecondsTimeout = 15000)
+        {
+            return WaitForScanResult(millisecondsTimeout, startScan: false);
+        }
+
+        /// <summary>
         /// Requests an asynchronous scan and then immediately returns the current visible Wi-Fi network list.
         /// This method does not wait for the scan-complete notification, so the returned list can still be
         /// the pre-scan snapshot if the WLAN service has not refreshed it yet.
@@ -253,10 +272,36 @@ namespace DHWifiClient.NET
             CurrentInterface.Connect(ssid, password: null, isHidden: isHidden);
         }
 
+        /// <summary>Connects to an open network and waits for the resulting connection outcome.</summary>
+        public WifiConnectionResult ConnectOpenAndWait(string ssid, bool isHidden = false,
+            int millisecondsTimeout = 15000, bool mergeDuplicateBssids = false)
+        {
+            ValidateSsid(ssid);
+            return WaitForConnectionResultCore(
+                () => CurrentInterface.Connect(ssid, password: null, isHidden: isHidden),
+                ssid,
+                millisecondsTimeout,
+                mergeDuplicateBssids);
+        }
+
         /// <summary>Connects to a WPA/WPA2-Personal network, auto-selecting the default PSK profile shape.</summary>
         public void ConnectPersonal(string ssid, string password, bool isHidden = false)
         {
             CurrentInterface.Connect(ssid, password, isHidden);
+        }
+
+        /// <summary>
+        /// Connects to a WPA/WPA2-Personal network and waits for the resulting connection outcome.
+        /// </summary>
+        public WifiConnectionResult ConnectPersonalAndWait(string ssid, string password, bool isHidden = false,
+            int millisecondsTimeout = 15000, bool mergeDuplicateBssids = false)
+        {
+            ValidateSsid(ssid);
+            return WaitForConnectionResultCore(
+                () => CurrentInterface.Connect(ssid, password, isHidden),
+                ssid,
+                millisecondsTimeout,
+                mergeDuplicateBssids);
         }
 
         /// <summary>Connects to a WPA/WPA2-Personal network with an explicit protocol/cipher combination.</summary>
@@ -265,10 +310,39 @@ namespace DHWifiClient.NET
             CurrentInterface.Connect(ssid, password, protocol, cipher, isHidden);
         }
 
+        /// <summary>
+        /// Connects to a WPA/WPA2-Personal network with an explicit protocol/cipher combination and waits
+        /// for the resulting connection outcome.
+        /// </summary>
+        public WifiConnectionResult ConnectPersonalAndWait(string ssid, string password,
+            WifiPskProtocol protocol, WifiCipher cipher, bool isHidden = false,
+            int millisecondsTimeout = 15000, bool mergeDuplicateBssids = false)
+        {
+            ValidateSsid(ssid);
+            return WaitForConnectionResultCore(
+                () => CurrentInterface.Connect(ssid, password, protocol, cipher, isHidden),
+                ssid,
+                millisecondsTimeout,
+                mergeDuplicateBssids);
+        }
+
         /// <summary>Connects to a legacy WEP network.</summary>
         public void ConnectWep(string ssid, string wepKey, WifiWepAuthentication authentication = WifiWepAuthentication.Open, int keyIndex = 0, bool isHidden = false)
         {
             CurrentInterface.ConnectWep(ssid, wepKey, authentication, keyIndex, isHidden);
+        }
+
+        /// <summary>Connects to a legacy WEP network and waits for the resulting connection outcome.</summary>
+        public WifiConnectionResult ConnectWepAndWait(string ssid, string wepKey,
+            WifiWepAuthentication authentication = WifiWepAuthentication.Open, int keyIndex = 0,
+            bool isHidden = false, int millisecondsTimeout = 15000, bool mergeDuplicateBssids = false)
+        {
+            ValidateSsid(ssid);
+            return WaitForConnectionResultCore(
+                () => CurrentInterface.ConnectWep(ssid, wepKey, authentication, keyIndex, isHidden),
+                ssid,
+                millisecondsTimeout,
+                mergeDuplicateBssids);
         }
 
         /// <summary>Connects to a hidden open network.</summary>
@@ -277,10 +351,36 @@ namespace DHWifiClient.NET
             ConnectOpen(ssid, isHidden: true);
         }
 
+        /// <summary>Connects to a hidden open network and waits for the resulting connection outcome.</summary>
+        public WifiConnectionResult ConnectHiddenOpenAndWait(string ssid, int millisecondsTimeout = 15000,
+            bool mergeDuplicateBssids = false)
+        {
+            return ConnectOpenAndWait(
+                ssid,
+                isHidden: true,
+                millisecondsTimeout: millisecondsTimeout,
+                mergeDuplicateBssids: mergeDuplicateBssids);
+        }
+
         /// <summary>Connects to a hidden WPA/WPA2-Personal network using the default PSK profile shape.</summary>
         public void ConnectHiddenPersonal(string ssid, string password)
         {
             ConnectPersonal(ssid, password, isHidden: true);
+        }
+
+        /// <summary>
+        /// Connects to a hidden WPA/WPA2-Personal network using the default PSK profile shape and waits
+        /// for the resulting connection outcome.
+        /// </summary>
+        public WifiConnectionResult ConnectHiddenPersonalAndWait(string ssid, string password,
+            int millisecondsTimeout = 15000, bool mergeDuplicateBssids = false)
+        {
+            return ConnectPersonalAndWait(
+                ssid,
+                password,
+                isHidden: true,
+                millisecondsTimeout: millisecondsTimeout,
+                mergeDuplicateBssids: mergeDuplicateBssids);
         }
 
         /// <summary>Connects to a hidden WPA/WPA2-Personal network with an explicit protocol/cipher combination.</summary>
@@ -289,10 +389,43 @@ namespace DHWifiClient.NET
             ConnectPersonal(ssid, password, protocol, cipher, isHidden: true);
         }
 
+        /// <summary>
+        /// Connects to a hidden WPA/WPA2-Personal network with an explicit protocol/cipher combination and
+        /// waits for the resulting connection outcome.
+        /// </summary>
+        public WifiConnectionResult ConnectHiddenPersonalAndWait(string ssid, string password,
+            WifiPskProtocol protocol, WifiCipher cipher, int millisecondsTimeout = 15000,
+            bool mergeDuplicateBssids = false)
+        {
+            return ConnectPersonalAndWait(
+                ssid,
+                password,
+                protocol,
+                cipher,
+                isHidden: true,
+                millisecondsTimeout: millisecondsTimeout,
+                mergeDuplicateBssids: mergeDuplicateBssids);
+        }
+
         /// <summary>Connects to a hidden WEP network.</summary>
         public void ConnectHiddenWep(string ssid, string wepKey, WifiWepAuthentication authentication = WifiWepAuthentication.Open, int keyIndex = 0)
         {
             ConnectWep(ssid, wepKey, authentication, keyIndex, isHidden: true);
+        }
+
+        /// <summary>Connects to a hidden WEP network and waits for the resulting connection outcome.</summary>
+        public WifiConnectionResult ConnectHiddenWepAndWait(string ssid, string wepKey,
+            WifiWepAuthentication authentication = WifiWepAuthentication.Open, int keyIndex = 0,
+            int millisecondsTimeout = 15000, bool mergeDuplicateBssids = false)
+        {
+            return ConnectWepAndWait(
+                ssid,
+                wepKey,
+                authentication,
+                keyIndex,
+                isHidden: true,
+                millisecondsTimeout: millisecondsTimeout,
+                mergeDuplicateBssids: mergeDuplicateBssids);
         }
 
         /// <summary>Connects using the supplied scanned network entry.</summary>
@@ -301,10 +434,62 @@ namespace DHWifiClient.NET
             CurrentInterface.Connect(network, password);
         }
 
+        /// <summary>
+        /// Connects using the supplied scanned network entry and waits for the resulting connection outcome.
+        /// </summary>
+        public WifiConnectionResult ConnectAndWait(WifiNetwork network, string password = null,
+            int millisecondsTimeout = 15000, bool mergeDuplicateBssids = false)
+        {
+            if (network == null)
+            {
+                throw new ArgumentNullException(nameof(network));
+            }
+
+            return WaitForConnectionResultCore(
+                () => CurrentInterface.Connect(network, password),
+                network.Ssid,
+                millisecondsTimeout,
+                mergeDuplicateBssids);
+        }
+
         /// <summary>Reconnects using an already-saved profile by SSID/profile name.</summary>
         public void ConnectSavedProfile(string ssid)
         {
             CurrentInterface.ConnectSavedProfile(ssid);
+        }
+
+        /// <summary>
+        /// Reconnects using an already-saved profile by SSID/profile name and waits for the resulting
+        /// connection outcome.
+        /// </summary>
+        public WifiConnectionResult ConnectSavedProfileAndWait(string ssid, int millisecondsTimeout = 15000,
+            bool mergeDuplicateBssids = false)
+        {
+            if (string.IsNullOrWhiteSpace(ssid))
+            {
+                throw new ArgumentException("ssid is required", nameof(ssid));
+            }
+
+            return WaitForConnectionResultCore(
+                () => CurrentInterface.ConnectSavedProfile(ssid),
+                ssid,
+                millisecondsTimeout,
+                mergeDuplicateBssids);
+        }
+
+        /// <summary>
+        /// Waits for the next connection outcome notification on the currently selected interface.
+        /// Call this immediately after a separate connect request if you are not using
+        /// <see cref="ConnectAndWait(WifiNetwork, string, int, bool)"/>.
+        /// </summary>
+        public WifiConnectionResult WaitForConnectionResult(string expectedSsid = null,
+            int millisecondsTimeout = 15000, bool mergeDuplicateBssids = false)
+        {
+            return WaitForConnectionResultCore(
+                startConnectAction: null,
+                expectedSsid: expectedSsid,
+                millisecondsTimeout: millisecondsTimeout,
+                mergeDuplicateBssids: mergeDuplicateBssids);
         }
 
         /// <summary>Connects to a WPA2-Enterprise (802.1X) network using PEAP-MSCHAPv2.</summary>
@@ -316,6 +501,30 @@ namespace DHWifiClient.NET
                 disableUserPromptForServerValidation);
         }
 
+        /// <summary>
+        /// Connects to a WPA2-Enterprise (802.1X) network using PEAP-MSCHAPv2 and waits for the resulting
+        /// connection outcome.
+        /// </summary>
+        public WifiConnectionResult ConnectEnterpriseAndWait(string ssid, string username, string password,
+            string domain = null, string serverNames = "", string trustedRootCaThumbprint = null,
+            bool disableUserPromptForServerValidation = false, int millisecondsTimeout = 15000,
+            bool mergeDuplicateBssids = false)
+        {
+            ValidateSsid(ssid);
+            return WaitForConnectionResultCore(
+                () => CurrentInterface.ConnectEnterprise(
+                    ssid,
+                    username,
+                    password,
+                    domain,
+                    serverNames,
+                    trustedRootCaThumbprint,
+                    disableUserPromptForServerValidation),
+                ssid,
+                millisecondsTimeout,
+                mergeDuplicateBssids);
+        }
+
         /// <summary>Connects to a WPA2-Enterprise (802.1X) network using EAP-TLS.</summary>
         public void ConnectEnterpriseEapTls(string ssid, string clientCertThumbprint = null,
             string serverNames = "", string trustedRootCaThumbprint = null, bool disableUserPromptForServerValidation = false)
@@ -323,6 +532,28 @@ namespace DHWifiClient.NET
             CurrentInterface.ConnectEnterpriseEapTls(
                 ssid, clientCertThumbprint, serverNames, trustedRootCaThumbprint,
                 disableUserPromptForServerValidation);
+        }
+
+        /// <summary>
+        /// Connects to a WPA2-Enterprise (802.1X) network using EAP-TLS and waits for the resulting
+        /// connection outcome.
+        /// </summary>
+        public WifiConnectionResult ConnectEnterpriseEapTlsAndWait(string ssid,
+            string clientCertThumbprint = null, string serverNames = "",
+            string trustedRootCaThumbprint = null, bool disableUserPromptForServerValidation = false,
+            int millisecondsTimeout = 15000, bool mergeDuplicateBssids = false)
+        {
+            ValidateSsid(ssid);
+            return WaitForConnectionResultCore(
+                () => CurrentInterface.ConnectEnterpriseEapTls(
+                    ssid,
+                    clientCertThumbprint,
+                    serverNames,
+                    trustedRootCaThumbprint,
+                    disableUserPromptForServerValidation),
+                ssid,
+                millisecondsTimeout,
+                mergeDuplicateBssids);
         }
 
         /// <summary>Disconnects the selected interface.</summary>
@@ -445,6 +676,178 @@ namespace DHWifiClient.NET
             }
 
             return interfaces[0];
+        }
+
+        private WifiWaitStatus WaitForScanResult(int millisecondsTimeout, bool startScan)
+        {
+            ValidateMillisecondsTimeout(millisecondsTimeout);
+            ThrowIfDisposed();
+
+            var oInterfaceId = CurrentInterfaceId;
+            var eResult = WifiWaitStatus.TimedOut;
+
+            using (var oCompletedEvent = new ManualResetEventSlim(false))
+            {
+                EventHandler<WifiNotificationEventArgs> handler = (sender, args) =>
+                {
+                    if (args.InterfaceId != oInterfaceId)
+                    {
+                        return;
+                    }
+
+                    switch (args.Type)
+                    {
+                        case WifiNotificationType.ScanComplete:
+                            eResult = WifiWaitStatus.Success;
+                            oCompletedEvent.Set();
+                            break;
+
+                        case WifiNotificationType.ScanFailed:
+                            eResult = WifiWaitStatus.Failed;
+                            oCompletedEvent.Set();
+                            break;
+                    }
+                };
+
+                Notification += handler;
+                try
+                {
+                    if (startScan)
+                    {
+                        Scan();
+                    }
+
+                    if (!oCompletedEvent.Wait(millisecondsTimeout))
+                    {
+                        return WifiWaitStatus.TimedOut;
+                    }
+
+                    return eResult;
+                }
+                finally
+                {
+                    Notification -= handler;
+                }
+            }
+        }
+
+        private WifiConnectionResult WaitForConnectionResultCore(Action startConnectAction,
+            string expectedSsid, int millisecondsTimeout, bool mergeDuplicateBssids)
+        {
+            ValidateMillisecondsTimeout(millisecondsTimeout);
+            ThrowIfDisposed();
+
+            var oInterfaceId = CurrentInterfaceId;
+            var oResult = WifiConnectionResult.CreateTimedOut(expectedSsid);
+
+            using (var oCompletedEvent = new ManualResetEventSlim(false))
+            {
+                EventHandler<WifiNotificationEventArgs> handler = (sender, args) =>
+                {
+                    if (args.InterfaceId != oInterfaceId)
+                    {
+                        return;
+                    }
+
+                    switch (args.Type)
+                    {
+                        case WifiNotificationType.ConnectionCompleted:
+                            var oCurrentConnection = GetCurrentConnection(mergeDuplicateBssids);
+                            if (oCurrentConnection != null && IsExpectedSsid(oCurrentConnection.Ssid, expectedSsid))
+                            {
+                                oResult = WifiConnectionResult.CreateSuccess(
+                                    args.Type,
+                                    expectedSsid,
+                                    oCurrentConnection,
+                                    "Connected successfully.");
+                            }
+                            else if (oCurrentConnection != null)
+                            {
+                                oResult = WifiConnectionResult.CreateFailed(
+                                    args.Type,
+                                    expectedSsid,
+                                    oCurrentConnection,
+                                    "Connection completed notification arrived, but another network is currently connected: "
+                                        + oCurrentConnection.Ssid);
+                            }
+                            else
+                            {
+                                oResult = WifiConnectionResult.CreateFailed(
+                                    args.Type,
+                                    expectedSsid,
+                                    connectedNetwork: null,
+                                    "Connection completed notification arrived, but the current connection could not be confirmed.");
+                            }
+
+                            oCompletedEvent.Set();
+                            break;
+
+                        case WifiNotificationType.ConnectionAttemptFailed:
+                            oResult = WifiConnectionResult.CreateFailed(
+                                args.Type,
+                                expectedSsid,
+                                connectedNetwork: null,
+                                "Connection attempt failed.");
+                            oCompletedEvent.Set();
+                            break;
+
+                        case WifiNotificationType.Disconnected:
+                            if (!oCompletedEvent.IsSet)
+                            {
+                                oResult = WifiConnectionResult.CreateFailed(
+                                    args.Type,
+                                    expectedSsid,
+                                    connectedNetwork: null,
+                                    "Disconnected before the connection could be confirmed.");
+                                oCompletedEvent.Set();
+                            }
+                            break;
+                    }
+                };
+
+                Notification += handler;
+                try
+                {
+                    startConnectAction?.Invoke();
+
+                    if (!oCompletedEvent.Wait(millisecondsTimeout))
+                    {
+                        return WifiConnectionResult.CreateTimedOut(expectedSsid);
+                    }
+
+                    return oResult;
+                }
+                finally
+                {
+                    Notification -= handler;
+                }
+            }
+        }
+
+        private static bool IsExpectedSsid(string actualSsid, string expectedSsid)
+        {
+            if (string.IsNullOrWhiteSpace(expectedSsid))
+            {
+                return !string.IsNullOrWhiteSpace(actualSsid);
+            }
+
+            return string.Equals(actualSsid ?? string.Empty, expectedSsid, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void ValidateSsid(string ssid)
+        {
+            if (string.IsNullOrWhiteSpace(ssid))
+            {
+                throw new ArgumentException("ssid is required", nameof(ssid));
+            }
+        }
+
+        private static void ValidateMillisecondsTimeout(int millisecondsTimeout)
+        {
+            if (millisecondsTimeout < Timeout.Infinite)
+            {
+                throw new ArgumentOutOfRangeException(nameof(millisecondsTimeout));
+            }
         }
 
         private void ThrowIfDisposed()

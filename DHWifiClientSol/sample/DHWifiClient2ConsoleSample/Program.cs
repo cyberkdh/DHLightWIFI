@@ -9,7 +9,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using DHWifiClient.NET;
 using DHWifiClient.NET.module;
 
@@ -17,13 +16,6 @@ namespace DHWifiClient2ConsoleSample
 {
     internal static class Program
     {
-        private sealed class ConnectWaitState
-        {
-            public string TargetSsid { get; set; }
-            public ManualResetEventSlim CompletedEvent { get; } = new ManualResetEventSlim(false);
-            public string ResultMessage { get; set; }
-        }
-
         private static int Main(string[] args)
         {
             try
@@ -58,7 +50,16 @@ namespace DHWifiClient2ConsoleSample
             Console.WriteLine("Interface: " + client.CurrentInterfaceName);
             Console.WriteLine();
 
-            client.Scan();
+            var scanStatus = client.ScanAndWait(10000);
+            if (scanStatus == WifiWaitStatus.Failed)
+            {
+                Console.WriteLine("Warning: scan failed. The last known network list will be used.");
+            }
+            else if (scanStatus == WifiWaitStatus.TimedOut)
+            {
+                Console.WriteLine("Warning: scan timed out. The last known network list will be used.");
+            }
+
             var networks = client.GetAvailableNetworks(mergeDuplicateBssids: true)
                 .OrderByDescending(network => network.IsConnected)
                 .ThenByDescending(network => network.SignalQuality)
@@ -161,74 +162,17 @@ namespace DHWifiClient2ConsoleSample
                 password = Console.ReadLine();
             }
 
-            var state = new ConnectWaitState
-            {
-                TargetSsid = network.Ssid ?? string.Empty,
-            };
-            EventHandler<WifiNotificationEventArgs> handler = (sender, args) => HandleNotification(client, state, args);
-
             Console.WriteLine();
             Console.WriteLine("Connecting to " + ssid + "...");
-            client.Notification += handler;
+            Console.WriteLine("Connect request sent. Waiting for result...");
 
-            try
-            {
-                client.Connect(network, password);
-                Console.WriteLine("Connect request sent. Waiting for result...");
+            var result = client.ConnectAndWait(
+                network,
+                password,
+                millisecondsTimeout: 15000,
+                mergeDuplicateBssids: true);
 
-                if (!state.CompletedEvent.Wait(TimeSpan.FromSeconds(15)))
-                {
-                    state.ResultMessage = "Timed out while waiting for a connection result notification.";
-                }
-
-                Console.WriteLine(state.ResultMessage ?? "No result message was produced.");
-            }
-            finally
-            {
-                client.Notification -= handler;
-                state.CompletedEvent.Dispose();
-            }
-        }
-
-        private static void HandleNotification(DHWifiClient2 client, ConnectWaitState state, WifiNotificationEventArgs args)
-        {
-            if (args.InterfaceId != client.CurrentInterfaceId)
-            {
-                return;
-            }
-
-            switch (args.Type)
-            {
-                case WifiNotificationType.ConnectionCompleted:
-                    var current = client.GetCurrentConnection(mergeDuplicateBssids: true);
-                    if (current != null && string.Equals(current.Ssid ?? string.Empty, state.TargetSsid, StringComparison.Ordinal))
-                    {
-                        state.ResultMessage = "Connected successfully.";
-                    }
-                    else if (current != null)
-                    {
-                        state.ResultMessage = "Connection notification arrived, but another network is currently connected: " + current.Ssid;
-                    }
-                    else
-                    {
-                        state.ResultMessage = "Connection completed notification arrived, but the current connection could not be confirmed.";
-                    }
-                    state.CompletedEvent.Set();
-                    break;
-
-                case WifiNotificationType.ConnectionAttemptFailed:
-                    state.ResultMessage = "Connection attempt failed.";
-                    state.CompletedEvent.Set();
-                    break;
-
-                case WifiNotificationType.Disconnected:
-                    if (!state.CompletedEvent.IsSet)
-                    {
-                        state.ResultMessage = "Disconnected before the connection could be confirmed.";
-                        state.CompletedEvent.Set();
-                    }
-                    break;
-            }
+            Console.WriteLine(result.Message);
         }
     }
 }
