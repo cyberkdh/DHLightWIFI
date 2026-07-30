@@ -7,7 +7,11 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////
 namespace DHWifiClient.NET.module
 {
-    /// <summary>Connection outcome returned by the `DHWifiClient2` wait helper methods.</summary>
+    /// <summary>
+    /// Connection outcome returned by the `DHWifiClient2` wait helper methods.
+    /// A `Failed` result can mean either an explicit failure notification or a completion notification
+    /// whose final connected network did not match the caller's expectation.
+    /// </summary>
     public sealed class WifiConnectionResult
     {
         internal WifiConnectionResult(WifiWaitStatus status, WifiNotificationType notificationType,
@@ -32,7 +36,10 @@ namespace DHWifiClient.NET.module
         /// <summary>The connection confirmed after the completion notification, or null.</summary>
         public WifiNetwork ConnectedNetwork { get; }
 
-        /// <summary>Human-readable summary of the connection outcome.</summary>
+        /// <summary>
+        /// Human-readable summary of the connection outcome.
+        /// Intended for logs or UI messages rather than stable programmatic branching.
+        /// </summary>
         public string Message { get; }
 
         /// <summary>True when the wait completed successfully and the expected network was confirmed.</summary>

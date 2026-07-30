@@ -22,7 +22,12 @@ dotnet add package DHWifiClient.NET
 
 ## Quick start
 
-Recommended entry point for new code:
+Recommended entry point for new code: `DHWifiClient2`
+
+- Recommended pattern for new code: prefer the `...AndWait(...)` helpers over `WaitForConnectionResult(...)` when possible, because they subscribe before issuing the connect request and avoid notification timing races.
+- `ScanAndGetAvailableNetworks(...)` is available as a convenience helper, but it still returns immediately after requesting the asynchronous scan. Use `ScanAndWait(...)`, `WaitForScanComplete(...)`, or the `Notification` event if you need a confirmed refreshed list.
+
+### Basic connect
 
 ```csharp
 using DHWifiClient.NET;
@@ -30,21 +35,113 @@ using DHWifiClient.NET;
 using (var client = new DHWifiClient2())
 {
     client.ScanAndWait();
-    var networks = client.GetAvailableNetworks(mergeDuplicateBssids: true);
-    var homeWifi = client.GetAvailableNetwork("MyHomeWifi", mergeDuplicateBssids: true);
 
-    if (homeWifi != null)
+    var homeWifi = client.GetAvailableNetwork("MyHomeWifi", mergeDuplicateBssids: true);
+    if (homeWifi == null)
     {
-        var result = client.ConnectAndWait(homeWifi, password: "MyPassword123", mergeDuplicateBssids: true);
+        return;
     }
 
-    var current = client.GetCurrentConnection();
+    var result = client.ConnectAndWait(
+        homeWifi,
+        password: "MyPassword123",
+        mergeDuplicateBssids: true);
+
+    if (!result.IsSuccess)
+    {
+        throw new InvalidOperationException(result.Message);
+    }
 }
 ```
 
-- `ScanAndGetAvailableNetworks(...)` is available as a convenience helper, but it still returns immediately after requesting the asynchronous scan. Use the `Notification` event if you need to wait for `ScanComplete` before trusting a refreshed list.
-- For simpler synchronous-style flows on top of the asynchronous Native WiFi notifications, `DHWifiClient2` also provides `ScanAndWait(...)`, `WaitForScanComplete(...)`, `ConnectAndWait(...)`, `ConnectSavedProfileAndWait(...)`, and `WaitForConnectionResult(...)`.
-- For the most common direct-entry connection flows, `DHWifiClient2` also provides `ConnectOpenAndWait(...)`, `ConnectPersonalAndWait(...)`, `ConnectWepAndWait(...)`, `ConnectEnterpriseAndWait(...)`, and `ConnectEnterpriseEapTlsAndWait(...)`.
+### Direct SSID-first connect
+
+```csharp
+using DHWifiClient.NET;
+
+using (var client = new DHWifiClient2())
+{
+    var result = client.ConnectPersonalAndWait(
+        "MyHomeWifi",
+        "MyPassword123",
+        millisecondsTimeout: 15000,
+        mergeDuplicateBssids: true);
+}
+```
+
+### Saved profile reconnect
+
+```csharp
+using DHWifiClient.NET;
+
+using (var client = new DHWifiClient2())
+{
+    if (client.HasSavedProfile("OfficeWifi"))
+    {
+        var result = client.ConnectSavedProfileAndWait(
+            "OfficeWifi",
+            millisecondsTimeout: 15000,
+            mergeDuplicateBssids: true);
+    }
+}
+```
+
+### Hidden network
+
+```csharp
+using DHWifiClient.NET;
+using DHWifiClient.NET.module;
+
+using (var client = new DHWifiClient2())
+{
+    var result = client.ConnectHiddenPersonalAndWait(
+        "HiddenWifi",
+        "MyPassword123",
+        WifiPskProtocol.WPA2,
+        WifiCipher.AES,
+        millisecondsTimeout: 15000,
+        mergeDuplicateBssids: true);
+}
+```
+
+### Enterprise (802.1X)
+
+```csharp
+using DHWifiClient.NET;
+
+using (var client = new DHWifiClient2())
+{
+    var result = client.ConnectEnterpriseAndWait(
+        "CorpWifi",
+        username: "user1",
+        password: "password1",
+        domain: "CONTOSO",
+        millisecondsTimeout: 15000,
+        mergeDuplicateBssids: true);
+}
+```
+
+### EAP-TLS
+
+```csharp
+using DHWifiClient.NET;
+
+using (var client = new DHWifiClient2())
+{
+    var result = client.ConnectEnterpriseEapTlsAndWait(
+        "CorpWifi",
+        clientCertThumbprint: "00112233445566778899AABBCCDDEEFF00112233",
+        millisecondsTimeout: 15000,
+        mergeDuplicateBssids: true);
+}
+```
+
+### When you need lower-level control
+
+- `ScanAndWait(...)`, `WaitForScanComplete(...)`
+- `ConnectAndWait(...)`, `ConnectSavedProfileAndWait(...)`
+- `WaitForConnectionResult(...)`
+- `Notification` event
 
 Classic low-level entry point:
 
@@ -81,12 +178,13 @@ WPA3-SAE and ad-hoc (IBSS) networks are intentionally not supported; the API thr
 ## Other capabilities
 
 - `GetInterfaces()` — enumerate WiFi adapters
+- `GetAvailableNetworks()` / `GetAvailableNetwork(ssid)` / `GetCurrentConnection()` — inspect visible and current networks
 - `GetSavedProfiles()` / `HasSavedProfile(name)` / `DeleteSavedProfile(name)` — manage saved profiles
 - `GetRadioState()` / `SetRadioState(bool)` — query/toggle the software radio switch
 - `ScanAndWait()` / `ConnectAndWait()` — wait-helper APIs for common scan/connect flows
 - `ConnectOpenAndWait()` / `ConnectPersonalAndWait()` / `ConnectEnterpriseAndWait()` — direct wait-helper APIs for SSID-first flows
-- `Notification` event — scan/connect/disconnect lifecycle notifications (raised on a native
-  callback thread; marshal to the UI thread yourself before touching UI controls)
+- `GetProfiles()` / `HasProfile()` / `DeleteProfile()` remain for backward compatibility, but new code should prefer the `SavedProfile`-named APIs for clearer intent
+- `Notification` event — scan/connect/disconnect lifecycle notifications (raised on a native callback thread; marshal to the UI thread yourself before touching UI controls)
 
 ## Sample application
 
@@ -96,6 +194,7 @@ WPA3-SAE and ad-hoc (IBSS) networks are intentionally not supported; the API thr
   - WinForms feature sample that uses the `DHWifiClient2` facade entry point and demonstrates scan, connect, saved-profile reconnect, hidden-network connect, Enterprise (`802.1X`) connect, radio toggle, and profile deletion.
 - `DHWifiClientSol\sample\DHWifiClient2ConsoleSample`
   - Minimal console sample for `scan -> select -> connect -> disconnect` flow with the `DHWifiClient2` facade entry point.
+- Manual verification checklist for the WinForms sample is maintained in `doc/discuss_v1.0.1/0021_20260730_205500_dhwificlient2sample_manual_checklist.md`.
 
 ### Console sample quick run
 

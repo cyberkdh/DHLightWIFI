@@ -479,8 +479,9 @@ namespace DHWifiClient.NET
 
         /// <summary>
         /// Waits for the next connection outcome notification on the currently selected interface.
-        /// Call this immediately after a separate connect request if you are not using
-        /// <see cref="ConnectAndWait(WifiNetwork, string, int, bool)"/>.
+        /// Call this immediately after a separate connect request if you are not using one of the
+        /// `...AndWait(...)` helpers. For new code, prefer the `...AndWait(...)` helpers because they
+        /// subscribe before issuing the connect request and therefore avoid missing a fast notification.
         /// </summary>
         public WifiConnectionResult WaitForConnectionResult(string expectedSsid = null,
             int millisecondsTimeout = 15000, bool mergeDuplicateBssids = false)
@@ -571,7 +572,10 @@ namespace DHWifiClient.NET
             return CurrentInterface.GetProfiles();
         }
 
-        /// <summary>Returns the saved profiles on the selected interface.</summary>
+        /// <summary>
+        /// Returns the saved profiles on the selected interface.
+        /// This is the preferred name for new code because it makes the profile source explicit.
+        /// </summary>
         public IReadOnlyList<WifiProfileInfo> GetSavedProfiles()
         {
             return GetProfiles();
@@ -586,7 +590,10 @@ namespace DHWifiClient.NET
             return HasSavedProfile(profileName);
         }
 
-        /// <summary>Returns true if the selected interface currently has a saved profile with the specified name.</summary>
+        /// <summary>
+        /// Returns true if the selected interface currently has a saved profile with the specified name.
+        /// This is the preferred name for new code because it makes the profile source explicit.
+        /// </summary>
         public bool HasSavedProfile(string profileName)
         {
             if (string.IsNullOrWhiteSpace(profileName))
@@ -607,7 +614,10 @@ namespace DHWifiClient.NET
             CurrentInterface.DeleteProfile(profileName);
         }
 
-        /// <summary>Deletes a saved profile from the selected interface.</summary>
+        /// <summary>
+        /// Deletes a saved profile from the selected interface.
+        /// This is the preferred name for new code because it makes the profile source explicit.
+        /// </summary>
         public void DeleteSavedProfile(string profileName)
         {
             DeleteProfile(profileName);
