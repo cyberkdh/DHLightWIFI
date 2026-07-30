@@ -12,6 +12,7 @@ profiles, and observe real-time connection events — all through a small, depen
   - The library itself can remain `AnyCPU`.
   - For `802.1X` (`PEAP-MSCHAPv2` / `EAP-TLS`) scenarios, the consuming executable should target an explicit architecture: `x86` or `x64` (not `AnyCPU`).
   - The WinForms sample defaults to `x64` and also provides an `x86` configuration.
+  - This recommendation is based on real validation plus a matching Microsoft Q&A symptom report for `WlanSetProfileEapXmlUserData` with `AnyCPU` executables. The Learn API reference does not currently document this constraint explicitly.
 
 ## Install
 
