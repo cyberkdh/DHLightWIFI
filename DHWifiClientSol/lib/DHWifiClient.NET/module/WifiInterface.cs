@@ -14,12 +14,19 @@ using DHWifiClient.NET.win32;
 
 namespace DHWifiClient.NET.module
 {
+    /// <summary>
+    /// Represents a single Wi-Fi network adapter (interface) and provides scan, connect, profile, and
+    /// radio-state operations against it via the native <c>wlanapi.dll</c>.
+    /// </summary>
     public class WifiInterface
     {
         private readonly IntPtr m_pClientHandle;
 
+        /// <summary>Unique identifier (GUID) of this interface, as reported by <c>WlanEnumInterfaces</c>.</summary>
         public Guid Id { get; }
+        /// <summary>Friendly (display) name of this interface.</summary>
         public string Name { get; }
+        /// <summary>Current operational state of this interface.</summary>
         public WifiInterfaceState State { get; internal set; }
 
         internal WifiInterface(IntPtr clientHandle, Guid id, string name, WifiInterfaceState state)
@@ -299,6 +306,10 @@ namespace DHWifiClient.NET.module
         /// Connects to a WPA2-Enterprise (802.1X) network using PEAP-MSCHAPv2 (username/password against the RADIUS/AD backend).
         /// The server certificate is validated using the system trust store; no client certificate is required.
         /// </summary>
+        /// <param name="ssid">Network name (SSID) to connect to.</param>
+        /// <param name="username">RADIUS/AD username to authenticate with.</param>
+        /// <param name="password">Password for <paramref name="username"/>.</param>
+        /// <param name="domain">Optional Windows/AD domain to qualify <paramref name="username"/> with.</param>
         /// <param name="serverNames">Optional semicolon-separated list of expected RADIUS server certificate subject names.</param>
         /// <param name="trustedRootCaThumbprint">Optional SHA1 thumbprint (hex, no separators) of the trusted Root CA that issued the RADIUS server certificate. Providing this lets Windows validate the server certificate without an interactive trust prompt.</param>
         /// <param name="disableUserPromptForServerValidation">When true, suppresses the "Continue connecting?" prompt. Only meaningful together with <paramref name="trustedRootCaThumbprint"/>.</param>
@@ -351,6 +362,7 @@ namespace DHWifiClient.NET.module
         /// certificate instead of a username/password. The client certificate must already be installed
         /// in the Windows certificate store (Personal) with its private key.
         /// </summary>
+        /// <param name="ssid">Network name (SSID) to connect to.</param>
         /// <param name="clientCertThumbprint">
         /// Optional SHA1 thumbprint (hex, no separators) of the client certificate to use. When omitted,
         /// Windows automatically selects a matching certificate from the store (SimpleCertSelection);

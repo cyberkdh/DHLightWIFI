@@ -31,6 +31,7 @@ namespace DHWifiClient.NET
         /// </summary>
         public event EventHandler<WifiNotificationEventArgs> Notification;
 
+        /// <summary>Opens a handle to the native WLAN service and registers for connection/scan notifications.</summary>
         public DHWifiClient()
         {
             int nResult = WlanNativeMethods.WlanOpenHandle(
@@ -115,12 +116,15 @@ namespace DHWifiClient.NET
             }
         }
 
+        /// <summary>Closes the native WLAN handle and unregisters notifications.</summary>
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>Releases the native WLAN handle. Override to add derived-class cleanup.</summary>
+        /// <param name="disposing">True when called from <see cref="Dispose()"/>; false when called from the finalizer.</param>
         protected virtual void Dispose(bool disposing)
         {
             if (m_bDisposed)
@@ -141,6 +145,7 @@ namespace DHWifiClient.NET
             m_bDisposed = true;
         }
 
+        /// <summary>Finalizer; releases the native WLAN handle if <see cref="Dispose()"/> was not called.</summary>
         ~DHWifiClient()
         {
             Dispose(false);

@@ -16,6 +16,11 @@ namespace DHWifiClient.NET.log
         private readonly object m_oSyncRoot = new object();
         private readonly string m_strDirectory;
 
+        /// <summary>Creates an instance that writes daily log files under <paramref name="directory"/>.</summary>
+        /// <param name="directory">
+        /// Directory to write log files into. When omitted, defaults to
+        /// <c>%ProgramData%\DHWifiClient\logs</c>.
+        /// </param>
         public FileLogWriter(string directory = null)
         {
             m_strDirectory = directory ?? Path.Combine(
@@ -23,6 +28,7 @@ namespace DHWifiClient.NET.log
                 "DHWifiClient", "logs");
         }
 
+        /// <inheritdoc/>
         public void Write(LogLevel level, string message, Exception exception)
         {
             try
