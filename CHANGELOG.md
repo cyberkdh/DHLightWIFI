@@ -15,3 +15,4 @@ The format follows [Keep a Changelog](https://keepachangelog.com/), and this pro
 - Real-time connection lifecycle notifications (scan/connect/disconnect events).
 - Multi-targeting: `net46`, `net6.0-windows`, `net8.0-windows`.
 - WinForms sample application demonstrating all supported connection flows.
+- Documentation note: for `802.1X` (`PEAP-MSCHAPv2` / `EAP-TLS`) scenarios, the consuming executable should target an explicit architecture (`x86` or `x64`) instead of `AnyCPU`. The library itself can remain `AnyCPU`.
