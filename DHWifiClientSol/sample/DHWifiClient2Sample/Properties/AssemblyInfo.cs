@@ -32,8 +32,8 @@ using System.Runtime.Versioning;
 //      Build Number
 //      Revision
 //
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.0.1.0")]
+[assembly: AssemblyFileVersion("1.0.1.0")]
 #if NET6_0_OR_GREATER
 [assembly: SupportedOSPlatform("windows")]
 #endif

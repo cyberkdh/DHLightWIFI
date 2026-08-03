@@ -12,7 +12,7 @@
   <PropertyGroup>
     <PackageId>DHWifiClient.NET</PackageId>
     <Title>DHWifiClient - Windows Native WiFi Client Library</Title>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>CYBERKDH</Authors>
     <Description>Windows Native WiFi (wlanapi.dll) client library for .NET. Scan, connect (Open, WEP, WPA/WPA2/WPA3-Personal, WPA2-Enterprise via PEAP-MSCHAPv2 or EAP-TLS), manage saved profiles, and observe real-time connection events.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
