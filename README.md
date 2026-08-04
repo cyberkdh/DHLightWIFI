@@ -207,7 +207,7 @@ WPA3-SAE and ad-hoc (IBSS) networks are intentionally not supported; the API thr
   - Minimal console sample for `scan -> select -> connect -> disconnect` flow with the `DHWifiClient2` facade entry point.
   - Targets `net46`, `net48`, `net6.0-windows`, and `net8.0-windows`.
   - Executable sample: build as `x86` or `x64`; default is `x64`.
-- Manual verification checklist for the WinForms sample is maintained in `doc/discuss_v1.0.1/0021_20260730_205500_dhwificlient2sample_manual_checklist.md`.
+- Manual verification checklist for the WinForms sample is maintained in the local discussion folder `..\doc\discuss_v1.0.1\0021_20260730_205500_dhwificlient2sample_manual_checklist.md`.
 
 ### Console sample quick run
 
