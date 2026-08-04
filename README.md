@@ -20,6 +20,8 @@ profiles, and observe real-time connection events — all through a small, depen
 dotnet add package DHWifiClient.NET
 ```
 
+Starting with `1.0.1`, the package assemblies are strong-name signed for better compatibility with consumer projects that require signed dependencies.
+
 ## Quick start
 
 Recommended entry point for new code: `DHWifiClient2`

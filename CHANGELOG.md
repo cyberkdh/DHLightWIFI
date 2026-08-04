@@ -36,6 +36,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/), and this pro
 
 ### Packaging and compatibility
 - Multi-targeting updated to `net46`, `net48`, `net6.0-windows`, and `net8.0-windows`.
+- Package assemblies are now strong-name signed to improve compatibility with consumers that require signed dependencies.
 - Sample executables are configured for explicit `x86` / `x64` builds.
 - Documentation now calls out the practical `802.1X` guidance that consuming executables should target `x86` or `x64` instead of `AnyCPU`.
 - `NETSDK1201` and `NETSDK1138` remain tracked as documentation-level warnings while the compatibility target matrix stays unchanged.
@@ -45,3 +46,4 @@ The format follows [Keep a Changelog](https://keepachangelog.com/), and this pro
 - Adds wait-helper APIs for scan/connect completion handling and clearer connection result inspection.
 - Adds dedicated WinForms and console samples for the new workflow.
 - Expands target framework coverage with `net48` while retaining Windows-focused multi-target support.
+- Strong-name signs the package assemblies for better compatibility with signed consumer projects.
