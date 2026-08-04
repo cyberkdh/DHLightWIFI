@@ -7,6 +7,8 @@
     <IsPackable>false</IsPackable>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Deterministic>true</Deterministic>
+    <AssemblyOriginatorKeyFile>$(MSBuildProjectDirectory)\..\..\..\.keys\DHWifiClient.NET.snk</AssemblyOriginatorKeyFile>
+    <SignAssembly Condition="Exists('$(AssemblyOriginatorKeyFile)')">true</SignAssembly>
   </PropertyGroup>
 
   <ItemGroup>

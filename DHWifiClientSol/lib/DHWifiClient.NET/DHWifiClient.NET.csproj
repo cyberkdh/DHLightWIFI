@@ -7,6 +7,8 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Deterministic>true</Deterministic>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <AssemblyOriginatorKeyFile>$(MSBuildProjectDirectory)\..\..\..\.keys\DHWifiClient.NET.snk</AssemblyOriginatorKeyFile>
+    <SignAssembly Condition="Exists('$(AssemblyOriginatorKeyFile)')">true</SignAssembly>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -37,5 +39,9 @@
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
+
+  <Target Name="EnsureStrongNameKeyForPack" BeforeTargets="Pack">
+    <Error Condition="!Exists('$(AssemblyOriginatorKeyFile)')" Text="Strong-name key file not found: $(AssemblyOriginatorKeyFile). Create projectroot/.keys/DHWifiClient.NET.snk locally or restore it from the GitHub secret before packing." />
+  </Target>
 
 </Project>

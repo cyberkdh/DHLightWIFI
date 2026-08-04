@@ -12,4 +12,5 @@
 /DHWifiClientSol/test/DHWifiClient.NET.Tests/bin
 /DHWifiClientSol/test/DHWifiClient.NET.Tests/obj
 /artifacts
+/.keys/
 *.csproj.user
