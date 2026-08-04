@@ -23,6 +23,24 @@ jobs:
           dotnet-version: |
             8.0.x
 
+      - name: Restore strong-name key
+        shell: pwsh
+        env:
+          DHWIFICLIENT_STRONG_NAME_KEY_BASE64: ${{ secrets.DHWIFICLIENT_STRONG_NAME_KEY_BASE64 }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:DHWIFICLIENT_STRONG_NAME_KEY_BASE64)) {
+            throw "GitHub secret DHWIFICLIENT_STRONG_NAME_KEY_BASE64 is required."
+          }
+
+          $keyDir = Join-Path $env:GITHUB_WORKSPACE ".keys"
+          $keyPath = Join-Path $keyDir "DHWifiClient.NET.snk"
+
+          New-Item -ItemType Directory -Force -Path $keyDir | Out-Null
+          [System.IO.File]::WriteAllBytes(
+            $keyPath,
+            [System.Convert]::FromBase64String($env:DHWIFICLIENT_STRONG_NAME_KEY_BASE64)
+          )
+
       - name: Restore
         run: msbuild DHWifiClientSol/DHWifiClientSol.sln /t:Restore /p:Configuration=Release /nologo /v:minimal
         working-directory: .
